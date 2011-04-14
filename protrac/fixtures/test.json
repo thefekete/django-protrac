@@ -1,0 +1,10 @@
+[
+  {
+    "model": "protrac.customer",
+    "pk": 1,
+    "fields": {
+      "name": "pooper",
+      "notes": "Lennon"
+    }
+  }
+]
