@@ -54,6 +54,9 @@ class Run(models.Model):
     """
     Production Runs
     """
+    # Need to schedule runs
+    # have start only and calc end
+    # run is closed when real_end and real_qty is input
     job = models.ForeignKey('Job', related_name='runs')
     start = models.DateTimeField()
     end = models.DateTimeField()
