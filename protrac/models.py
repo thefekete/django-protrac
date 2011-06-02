@@ -2,22 +2,13 @@ from datetime import timedelta
 
 from django.db import models
 
-from app_settings import REFTYPE_CHOICES
+from app_settings import DEPT_CHOICES
+from app_settings import PRODUCTION_LINE_CHOICES
 
 
-class NameModel(models.Model):
-    """
-    Abstract Model Class for single field ('name') models
-    """
-    name = models.CharField(max_length=64, unique=True)
-
-    class Meta:
-        abstract = True
-        ordering = ['name']
-
-    def __unicode__(self):
-        return unicode(self.name)
-
+###################
+# ABSTRACT MODELS #
+###################
 
 class TimestampModel(models.Model):
     """
@@ -32,39 +23,37 @@ class TimestampModel(models.Model):
         abstract = True
 
 
-class Customer(NameModel):
+##################
+# REGULAR MODELS #
+##################
+
+class Customer(models.Model):
     """
     Customers
     """
-    pass
+    name = models.CharField(max_length=64, unique=True)
 
+    class Meta:
+        # abstract = True
+        ordering = ['name']
 
-class Department(NameModel):
-    """
-    Customers
-    """
-    pass
-
-
-class Station(NameModel):
-    """
-    Customers
-    """
-    department = models.ForeignKey('Department')
+    def __unicode__(self):
+        return unicode(self.name)
 
 
 class Product(TimestampModel):
     """
     Products
     """
-    department = models.ForeignKey('Department')
+    department = models.CharField(max_length=1, choices=DEPT_CHOICES,
+        help_text='You can edit these choices in settings.py')
     part_number = models.CharField(max_length=64, db_index=True, unique=True)
     description = models.TextField(blank=True, null=True)
     cycle_time = models.FloatField(
         help_text='Time per unit in seconds (eg 5.73)')
     material_wt = models.FloatField(blank=True, null=True,
-        verbose_name='Material weight',
-        help_text='Material Weight / Unit in Pounds')
+        verbose_name='Material Weight',
+        help_text='Material Weight per Unit in Pounds')
 
     class Meta:
         ordering = ['part_number']
@@ -76,32 +65,41 @@ class Product(TimestampModel):
         return timedelta(seconds=self.cycle_time) * qty
 
     def gross_wt(self, qty=1):
-        return self.material_wt * qty
+        try:
+            return self.material_wt * qty
+        except TypeError:
+            return None
 
 
 class Job(TimestampModel):
     """
     Bob Loblaw Job Log
+
+    Jobs represent individual line items from POs or WOs. Their priority
+    represents the order in which production resources should be allocated.
     """
-    station = models.ForeignKey('Station', blank=True, null=True)
+    production_line = models.CharField(max_length=2,
+        choices=PRODUCTION_LINE_CHOICES, blank=True, null=True,
+        help_text='You can edit these choices in settings.py')
     product = models.ForeignKey('Product')
     qty = models.PositiveIntegerField()
     customer = models.ForeignKey('Customer')
     refs = models.CharField(max_length=128, blank=True, null=True,
         help_text='Comma Separated List')
     due_date = models.DateField(blank=True, null=True)
-    position = models.PositiveIntegerField(default=0)
+    priority = models.PositiveIntegerField(default=0)
     void = models.BooleanField(default=False)
-    closed = models.BooleanField(default=False)
 
     class Meta:
         pass
 
     def __unicode__(self):
-        return unicode(self.id)
+        return unicode(self.id).zfill(3)
 
     def is_scheduled(self):
-        if self.station is not None:
+        if (self.production_line is not None
+            and self.qty_remaining() > 0
+            and self.void is not True):
             return True
         else:
             return False
@@ -113,20 +111,20 @@ class Job(TimestampModel):
         else:
             return int(qty)
 
-    def qty_balance(self):
+    def qty_remaining(self):
         return self.qty - self.qty_done()
 
     def weight(self):
         return self.product.gross_wt(self.qty)
 
-    def weight_balance(self):
-        return self.product.gross_wt(self.qty_balance())
+    def weight_remaining(self):
+        return self.product.gross_wt(self.qty_remaining())
 
     def duration(self):
         return self.product.duration(self.qty)
 
-    def duration_balance(self):
-        return self.product.duration(self.qty_balance())
+    def duration_remaining(self):
+        return self.product.duration(self.qty_remaining())
 
 
 class Run(TimestampModel):
@@ -143,7 +141,7 @@ class Run(TimestampModel):
         pass
 
     def __unicode__(self):
-        return unicode(self.id)
+        return unicode(self.id).zfill(3)
 
     def weight(self):
         return self.job.product.weight * self.qty
@@ -152,23 +150,30 @@ class Run(TimestampModel):
         return (self.end - self.start) / self.qty
 
 
-class JobSchedule(Job):
+################
+# PROXY MODELS #
+################
+
+class ScheduleManager(models.Manager):
+    def get_query_set(self):
+        # We want to filter just scheduled jobs, i.e not void, sent to
+        # production line and with qty remaining.
+        #
+        # Job.is_scheduled() does all this, but we can pre-filter on void and
+        # production line in the database, so we will.
+        return Job.objects.filter(id__in=(
+            x.id for x in Job.objects.filter(void=False).filter(
+                production_line__isnull=False)
+            if x.is_scheduled() == True ))
+
+class Schedule(Job):
     """
     Scheduled Jobs Proxy
     """
 
-    class Meta:
-        proxy = True
-        verbose_name = 'Jobs > Scheduled'
-        verbose_name_plural = 'Jobs > Scheduled'
-
-
-class JobLog(Job):
-    """
-    Scheduled Jobs Proxy
-    """
+    objects = ScheduleManager()
 
     class Meta:
         proxy = True
-        verbose_name = 'Jobs > Log'
-        verbose_name_plural = 'Jobs > Log'
+        verbose_name = 'Scheduled Job'
+        verbose_name_plural = 'Job Schedule'
