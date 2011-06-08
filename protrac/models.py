@@ -6,6 +6,11 @@ from app_settings import DEPT_CHOICES
 from app_settings import PRODUCTION_LINE_CHOICES
 
 
+# TODO Add or remove indexes to appropriate fields.
+# TODO Double check mandatory fields (blank, null)
+# TODO Add aggregate average of cycle time to Job and Product
+
+
 ###################
 # ABSTRACT MODELS #
 ###################
@@ -65,10 +70,7 @@ class Product(TimestampModel):
         return timedelta(seconds=self.cycle_time) * qty
 
     def gross_wt(self, qty=1):
-        try:
-            return self.material_wt * qty
-        except TypeError:
-            return None
+        return self.material_wt * qty
 
 
 class Job(TimestampModel):
