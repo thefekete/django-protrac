@@ -38,21 +38,21 @@ class Customer(models.Model):
         ordering = ['name']
 
     def __unicode__(self):
-        return unicode(self.name)
+        return self.name
 
 
 class Product(TimestampModel):
     """
     Products
     """
-    department = models.CharField(max_length=1, choices=DEPT_CHOICES,
+    department = models.CharField(max_length=64, choices=DEPT_CHOICES,
         help_text='You can edit these choices in settings.py')
     part_number = models.CharField(max_length=64, db_index=True, unique=True)
     description = models.TextField(blank=True, null=True)
+    setup = models.TextField(blank=True, null=True)
     cycle_time = models.FloatField(
         help_text='Time per unit in seconds (eg 5.73)')
-    material_wt = models.FloatField(blank=True, null=True,
-        verbose_name='Material Weight',
+    material_wt = models.FloatField(default=0, verbose_name='Material Weight',
         help_text='Material Weight per Unit in Pounds')
 
     class Meta:
@@ -85,9 +85,10 @@ class Job(TimestampModel):
     qty = models.PositiveIntegerField()
     customer = models.ForeignKey('Customer')
     refs = models.CharField(max_length=128, blank=True, null=True,
-        help_text='Comma Separated List')
+        verbose_name='References', help_text='Comma Separated List')
     due_date = models.DateField(blank=True, null=True)
     priority = models.PositiveIntegerField(default=0)
+    suspended = models.CharField(max_length=32, blank=True, null=True)
     void = models.BooleanField(default=False)
 
     class Meta:
@@ -95,6 +96,17 @@ class Job(TimestampModel):
 
     def __unicode__(self):
         return unicode(self.id).zfill(3)
+
+    def save(self, *args, **kwargs):
+        super(Job, self).save(*args, **kwargs) # Call the "real" save()
+        self.prioritize()
+
+    @classmethod
+    def prioritize(cls):
+        for i, o in enumerate(
+                cls.objects.filter(priority__gt=0).order_by('priority')):
+            o.priority = (i + 1) * 10
+            super(Job, o).save() # Call the "real" save()
 
     def is_scheduled(self):
         if (self.production_line is not None
@@ -144,7 +156,7 @@ class Run(TimestampModel):
         return unicode(self.id).zfill(3)
 
     def weight(self):
-        return self.job.product.weight * self.qty
+        return self.job.product.gross_wt(self.qty)
 
     def cycle_time(self):
         return (self.end - self.start) / self.qty

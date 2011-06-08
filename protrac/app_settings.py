@@ -1,10 +1,5 @@
 from django.conf import settings
 
-REFTYPE_CHOICES = getattr(settings, 'PROTRAC_REFTYPE_CHOICES',
-    [('SO', u'Sales Order Number'),
-     ('PO', u'Purchase Order Number'),
-     ('-', u'Other')])
-
 PRODUCTION_LINE_CHOICES = getattr(settings, 'PROTRAC_PRODUCTION_LINE_CHOICES',
     [('Assembly', (
         ('A1', u'Assembly Line 1'),
@@ -20,7 +15,5 @@ PRODUCTION_LINE_CHOICES = getattr(settings, 'PROTRAC_PRODUCTION_LINE_CHOICES',
         ('I4', u'Injection Line 4'))),
     ])
 
-DEPT_CHOICES = getattr(settings, 'PROTRAC_DEPT_CHOICES', (
-    ('A', u'Assembly'),
-    ('X', u'Extrusion'),
-    ('I', u'Injection')))
+DEPT_CHOICES = getattr(settings, 'PROTRAC_DEPT_CHOICES',
+        [ (x[0] ,x[0]) for x in PRODUCTION_LINE_CHOICES ])

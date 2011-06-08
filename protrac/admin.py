@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.conf.urls.defaults import patterns
+from django.template.defaultfilters import force_escape
 from models import *
 from utils import get_change_url
 
@@ -20,13 +22,18 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ['department']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
+    a_fieldsets = (
+        ('Dates', {
+            'fields': ('ctime', 'mtime')
+        }),
+    )
 admin.site.register(Product, ProductAdmin)
 
 
 JOB_LIST_DISPLAY = ['__unicode__', 'priority', 'product_department',
     'production_line', 'product_admin_link', 'product_description', 'customer',
     'refs', 'due_date', 'remaining', 'weight_remaining', 'duration_remaining',
-    'void']
+    'suspended', 'void']
 
 
 class JobAdmin(admin.ModelAdmin):
@@ -52,7 +59,7 @@ class JobAdmin(admin.ModelAdmin):
     def product_admin_link(self, obj):
         p = obj.product
         return u'<a href="%s" title="%s">%s</a>' % (
-                    get_change_url(p), p.description, p)
+            get_change_url(p), force_escape(p.description), force_escape(p))
     product_admin_link.allow_tags = True
     product_admin_link.short_description = 'Product'
 
@@ -80,6 +87,20 @@ class ScheduleAdmin(JobAdmin):
     ld = list(JOB_LIST_DISPLAY)
     ld.remove('void')
     list_display = ld
+
+    def get_urls(self):
+        urls = super(ScheduleAdmin, self).get_urls()
+        my_urls = patterns('',
+            (r'^my_view/$', self.admin_site.admin_view(self.my_view))
+        )
+        return my_urls + urls
+
+    def my_view(self, request):
+        import datetime
+        from django.http import HttpResponse
+        now = datetime.datetime.now()
+        html = "<html><body>It is now %s.</body></html>" % now
+        return HttpResponse(html)
 admin.site.register(Schedule, ScheduleAdmin)
 
 
