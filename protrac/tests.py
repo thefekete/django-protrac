@@ -3,17 +3,6 @@ from datetime import datetime, timedelta
 from models import Customer, Job, Product, Run, Schedule
 
 
-# class SimpleTest(TestCase):
-# 
-#     #fixtures = ['testfixture']
-# 
-#     def test_basic_addition(self):
-#         """
-#         Tests that 1 + 1 always equals 2.
-#         """
-#         self.assertEqual(1 + 1, 2)
-
-
 class CustomerTest(TestCase):
     # this is kinda retarded, but we'll do it anyways...
     def test_customer(self):
@@ -154,5 +143,55 @@ class RunTest(TestCase):
 
 
 class ScheduleTest(TestCase):
-    # TODO Add tests for schedule proxy
-    pass
+
+    def setUp(self):
+        self.c = Customer.objects.create(name='cust1')
+        self.p = Product.objects.create(department='Injection',
+                part_number='M1911', cycle_time=2, material_wt=3)
+
+    def test_manager(self):
+        # TODO: test ScheduleManager filtering
+
+        scheduled = (
+                # Job 001
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    production_line='I1', pk=1),
+                # Job 002
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    production_line='I1', pk=2),
+                # Job 003
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    suspended='No material', production_line='I1', pk=3),)
+        Run.objects.create(job=scheduled[1], qty=999, operator='j',
+                start=datetime.now(), end=datetime.now())
+
+        not_scheduled = (
+                # Job 004: no production line:
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    pk=4),
+                # Job 005: void:
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    production_line='I1', void=True, pk=5),
+                # Job 006: completed qty (via Run below):
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    production_line='I1', pk=6),
+                # Job 007: overshoot qty (via Run below):
+                Job.objects.create(product=self.p, qty=1000, customer=self.c,
+                    production_line='I1', pk=7),)
+        Run.objects.create(job=not_scheduled[2], qty=1000, operator='j',
+                start=datetime.now(), end=datetime.now())
+        Run.objects.create(job=not_scheduled[3], qty=1001, operator='j',
+                start=datetime.now(), end=datetime.now())
+
+        job_pks = [ j.pk for j in Job.objects.all() ]
+        schedule_pks = [ j.pk for j in Schedule.objects.all() ]
+
+        for s in scheduled:
+            if s.pk not in schedule_pks:
+                raise AssertionError(
+                        '%s should be in Schedule, but its not...' % repr(s))
+
+        for n in not_scheduled:
+            if n.pk in schedule_pks:
+                raise AssertionError(
+                        '%s should not be in Schedule, but it is...' % repr(n))
