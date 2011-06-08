@@ -14,9 +14,32 @@ from models import Customer, Job, Product, Run, Schedule
 #         self.assertEqual(1 + 1, 2)
 
 
+class CustomerTest(TestCase):
+    # this is kinda retarded, but we'll do it anyways...
+    def test_customer(self):
+        c = Customer.objects.create(name='ABC Widgets')
+        self.assertEqual(c.name, 'ABC Widgets')
+
+
 class ProductTest(TestCase):
-    # TODO: Add product tests
-    pass
+
+    def test_product(self):
+        p = Product.objects.create(part_number='M2', department='Assembly',
+                cycle_time=492.5, material_wt=1.75)
+        self.assertEqual(unicode(p), 'M2')
+        self.assertEqual(p.duration(), timedelta(seconds=492.5))
+        self.assertEqual(p.duration(25), timedelta(seconds=492.5*25))
+        self.assertEqual(p.gross_wt(), 1.75)
+        self.assertEqual(p.gross_wt(50), 1.75*50)
+
+        p.material_wt = 0
+        p.cycle_time = 0
+        p.save()
+        self.assertEqual(unicode(p), 'M2')
+        self.assertEqual(p.duration(), timedelta(seconds=0))
+        self.assertEqual(p.duration(25), timedelta(seconds=0))
+        self.assertEqual(p.gross_wt(), 0)
+        self.assertEqual(p.gross_wt(50), 0)
 
 
 class JobTest(TestCase):
@@ -132,3 +155,4 @@ class RunTest(TestCase):
 
 class ScheduleTest(TestCase):
     # TODO Add tests for schedule proxy
+    pass
