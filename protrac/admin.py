@@ -114,6 +114,14 @@ class ScheduleAdmin(JobAdmin):
     ld.remove('void')
     list_display = ld
 
+    # Disable Job addition from proxy model admin (still allow change)
+    def has_add_permission(self, request):
+        return False
+
+    # Disable Job deletion from proxy model admin
+    def has_delete_permission(self, request):
+        return False
+
     def get_urls(self):
         urls = super(ScheduleAdmin, self).get_urls()
         my_urls = patterns('',
