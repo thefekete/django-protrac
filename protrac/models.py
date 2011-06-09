@@ -6,7 +6,6 @@ from app_settings import DEPT_CHOICES
 from app_settings import PRODUCTION_LINE_CHOICES
 
 
-# TODO Add or remove indexes to appropriate fields.
 # TODO Double check mandatory fields (blank, null)
 # TODO Add aggregate average of cycle time to Job and Product
 
@@ -81,7 +80,7 @@ class Job(TimestampModel):
     represents the order in which production resources should be allocated.
     """
     production_line = models.CharField(max_length=2,
-        choices=PRODUCTION_LINE_CHOICES, blank=True, null=True,
+        choices=PRODUCTION_LINE_CHOICES, blank=True, null=True, db_index=True,
         help_text='You can edit these choices in settings.py')
     product = models.ForeignKey('Product')
     qty = models.PositiveIntegerField()
@@ -89,9 +88,9 @@ class Job(TimestampModel):
     refs = models.CharField(max_length=128, blank=True, null=True,
         verbose_name='References', help_text='Comma Separated List')
     due_date = models.DateField(blank=True, null=True)
-    priority = models.PositiveIntegerField(default=0)
+    priority = models.PositiveIntegerField(default=0, db_index=True)
     suspended = models.CharField(max_length=32, blank=True, null=True)
-    void = models.BooleanField(default=False)
+    void = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         pass
@@ -145,7 +144,7 @@ class Run(TimestampModel):
     """
     Run Log
     """
-    job = models.ForeignKey('Job')
+    job = models.ForeignKey('Job', db_index=True)
     qty = models.PositiveIntegerField()
     start = models.DateTimeField()
     end = models.DateTimeField()
