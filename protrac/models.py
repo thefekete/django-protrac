@@ -100,22 +100,28 @@ class Job(TimestampModel):
 
     def save(self, *args, **kwargs):
         super(Job, self).save(*args, **kwargs) # Call the "real" save()
-        self.prioritize()
+        self.prioritize() # space priority values evenly again
 
     @classmethod
     def prioritize(cls):
+        """
+        Re-assigns priority values to be 10 apart for easy ordering by hand
+        """
         for i, o in enumerate(
                 cls.objects.filter(priority__gt=0).order_by('priority')):
             o.priority = (i + 1) * 10
             super(Job, o).save() # Call the "real" save()
 
     def is_scheduled(self):
-        if (self.production_line is not None
-            and self.qty_remaining() > 0
-            and self.void is not True):
-            return True
-        else:
-            return False
+        return self.id in [ s.id for s in Schedule.objects.all() ]
+        # Here's the original method, the new one is slower but less
+        # complicated.
+        #if (self.production_line is not None
+        #    and self.qty_remaining() > 0
+        #    and self.void is not True):
+        #    return True
+        #else:
+        #    return False
 
     def qty_done(self):
         qty = self.run_set.aggregate(models.Sum('qty'))['qty__sum']
@@ -143,6 +149,8 @@ class Job(TimestampModel):
 class Run(TimestampModel):
     """
     Run Log
+
+    Runs represent an actual production run towords a given Job.
     """
     job = models.ForeignKey('Job', db_index=True)
     qty = models.PositiveIntegerField()
@@ -169,19 +177,21 @@ class Run(TimestampModel):
 
 class ScheduleManager(models.Manager):
     def get_query_set(self):
-        # We want to filter just scheduled jobs, i.e not void, sent to
-        # production line and with qty remaining.
-        #
-        # Job.is_scheduled() does all this, but we can pre-filter on void and
-        # production line in the database, so we will.
+        # use the database to filter on void and production_line, but check
+        # each for qty_remaining.
         return Job.objects.filter(id__in=(
             x.id for x in Job.objects.filter(void=False).filter(
                 production_line__isnull=False)
-            if x.is_scheduled() == True ))
+            if x.qty_remaining() > 0))
 
 class Schedule(Job):
     """
     Scheduled Jobs Proxy
+
+    Filters Jobs to show only "scheduled jobs". I.E. those that are not void,
+    have an assigned production line, and have a quantity remaining to be
+    produced (duh). This is accomplished with the ScheduleManager model
+    manager above.
     """
 
     objects = ScheduleManager()
