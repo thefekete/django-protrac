@@ -17,10 +17,8 @@ class TimestampModel(models.Model):
     """
     Abstract Model Class for timestamped models
     """
-    ctime = models.DateTimeField(auto_now_add=True,
-        help_text='Creation Timestamp')
-    mtime = models.DateTimeField(auto_now=True,
-        help_text='Modified Timestamp')
+    ctime = models.DateTimeField(auto_now_add=True, verbose_name='Created')
+    mtime = models.DateTimeField(auto_now=True, verbose_name='Modified')
 
     class Meta:
         abstract = True

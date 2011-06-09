@@ -13,7 +13,9 @@ class RunInline(admin.TabularInline):
 
 # Model Admins
 
-admin.site.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    search_fields = ('name',)
+admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
@@ -22,11 +24,20 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ['department']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
-    a_fieldsets = (
-        ('Dates', {
+    search_fields = ('part_number', 'description')
+    fieldsets = (
+        (None, {
+            'fields': (('part_number', 'department'), ('cycle_time',
+                'material_wt'),)
+            }),
+        ('Detailed Informaion', {
+            'fields': ('description', 'setup')
+            }),
+        ('Creation/Modification Times', {
+            'classes': ('collapse',),
             'fields': ('ctime', 'mtime')
-        }),
-    )
+            }),
+        )
 admin.site.register(Product, ProductAdmin)
 
 
@@ -43,6 +54,21 @@ class JobAdmin(admin.ModelAdmin):
     list_filter = ['product__department', 'production_line', 'customer', 'product']
     search_fields = ['refs', 'product__part_number', 'customer__name']
     readonly_fields = ['ctime', 'mtime']
+
+    fieldsets = (
+        (None, {
+            'fields': (('production_line', 'priority'), ('suspended',
+                'void'))
+            }),
+        ('Order Info', {
+            'fields': (('customer', 'due_date'), 'refs', ('product',
+                'qty'))
+            }),
+        ('Creation/Modification Times', {
+            'classes': ('collapse',),
+            'fields': ('ctime', 'mtime')
+            }),
+        )
 
     inlines = [RunInline]
 
@@ -105,9 +131,20 @@ admin.site.register(Schedule, ScheduleAdmin)
 
 
 class RunAdmin(admin.ModelAdmin):
-    list_display = ['__unicode__', 'job_admin_link', 'start', 'end', 'qty', 'weight', 'cycle_time',
-        'operator']
+    list_display = ['__unicode__', 'job_admin_link', 'start', 'end', 'qty',
+           'weight', 'cycle_time', 'operator']
     readonly_fields = ['ctime', 'mtime']
+    search_fields = ('job__product__part_number', 'job__customer__name',
+           'job__refs', 'operator',)
+    fieldsets = (
+        (None, {
+            'fields': (('job', 'qty'), 'operator', 'start', 'end')
+            }),
+        ('Creation/Modification Times', {
+            'classes': ('collapse',),
+            'fields': ('ctime', 'mtime')
+            }),
+        )
 
     def job_admin_link(self, obj):
         j = obj.job
