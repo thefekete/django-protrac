@@ -6,7 +6,6 @@ from app_settings import DEPT_CHOICES
 from app_settings import PRODUCTION_LINE_CHOICES
 
 
-# TODO Double check mandatory fields (blank, null)
 # TODO Add aggregate average of cycle time to Job and Product
 
 
@@ -85,11 +84,12 @@ class Job(TimestampModel):
     product = models.ForeignKey('Product')
     qty = models.PositiveIntegerField()
     customer = models.ForeignKey('Customer')
-    refs = models.CharField(max_length=128, blank=True, null=True,
-        verbose_name='References', help_text='Comma Separated List')
+    refs = models.CharField(max_length=128, verbose_name='References',
+            help_text='Comma Separated List')
     due_date = models.DateField(blank=True, null=True)
     priority = models.PositiveIntegerField(default=0, db_index=True)
-    suspended = models.CharField(max_length=32, blank=True, null=True)
+    suspended = models.CharField(max_length=32, blank=True, null=True,
+            help_text='Give reason for suspension, or blank for not suspended')
     void = models.BooleanField(default=False, db_index=True)
 
     class Meta:
@@ -148,7 +148,7 @@ class Run(TimestampModel):
     qty = models.PositiveIntegerField()
     start = models.DateTimeField()
     end = models.DateTimeField()
-    operator = models.CharField(max_length=16, blank=True, null=True)
+    operator = models.CharField(max_length=32)
 
     class Meta:
         pass
