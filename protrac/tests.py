@@ -13,8 +13,8 @@ class CustomerTest(TestCase):
 class ProductTest(TestCase):
 
     def test_product(self):
-        p = Product.objects.create(part_number='M2', department='Assembly',
-                cycle_time=492.5, material_wt=1.75)
+        p = Product.objects.create(part_number='M2', cycle_time=492.5,
+                material_wt=1.75)
         self.assertEqual(unicode(p), 'M2')
         self.assertEqual(p.duration(), timedelta(seconds=492.5))
         self.assertEqual(p.duration(25), timedelta(seconds=492.5*25))
@@ -35,8 +35,8 @@ class JobTest(TestCase):
 
     def setUp(self):
         self.c = Customer.objects.create(name='cust1')
-        self.p = Product.objects.create(department='Injection',
-                part_number='M1911', cycle_time=2, material_wt=3)
+        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
+                material_wt=3)
 
     def test_methods(self):
         methods = ('qty_done', 'qty_remaining', 'weight', 'weight_remaining',
@@ -67,8 +67,8 @@ class JobTest(TestCase):
             timedelta(seconds=0)))
 
         # Test product with zero weight
-        self.p0 = Product.objects.create(department='Injection',
-                part_number='M16', cycle_time=2, material_wt=0)
+        self.p0 = Product.objects.create(part_number='M16', cycle_time=2,
+                material_wt=0)
         j0 = Job.objects.create(product=self.p0, qty=1000, customer=self.c)
         assert_methods(j0, (0, 1000, 0, 0, timedelta(seconds=2000),
             timedelta(seconds=2000)))
@@ -129,8 +129,8 @@ class RunTest(TestCase):
 
     def setUp(self):
         self.c = Customer.objects.create(name='cust1')
-        self.p = Product.objects.create(department='Injection',
-                part_number='M1911', cycle_time=2, material_wt=3)
+        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
+                material_wt=3)
         self.j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
 
     def test_methods(self):
@@ -146,8 +146,8 @@ class ScheduleTest(TestCase):
 
     def setUp(self):
         self.c = Customer.objects.create(name='cust1')
-        self.p = Product.objects.create(department='Injection',
-                part_number='M1911', cycle_time=2, material_wt=3)
+        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
+                material_wt=3)
 
     def test_manager(self):
         # TODO: test ScheduleManager filtering

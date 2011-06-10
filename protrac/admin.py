@@ -19,15 +19,13 @@ admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['part_number', 'description', 'cycle_time', 'material_wt',
-        'department']
-    list_filter = ['department']
+    list_display = ['part_number', 'description', 'cycle_time', 'material_wt']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
     search_fields = ('part_number', 'description')
     fieldsets = (
         (None, {
-            'fields': (('part_number', 'department'), ('cycle_time',
+            'fields': ('part_number', ('cycle_time',
                 'material_wt'),)
             }),
         ('Detailed Informaion', {
@@ -41,9 +39,9 @@ class ProductAdmin(admin.ModelAdmin):
 admin.site.register(Product, ProductAdmin)
 
 
-JOB_LIST_DISPLAY = ['__unicode__', 'priority', 'product_department',
-    'production_line', 'product_admin_link', 'product_description', 'customer',
-    'refs', 'due_date', 'remaining', 'weight_remaining', 'duration_remaining',
+JOB_LIST_DISPLAY = ['__unicode__', 'priority', 'production_line',
+    'product_admin_link', 'product_description', 'customer', 'refs',
+    'due_date', 'remaining', 'weight_remaining', 'duration_remaining',
     'suspended', 'void']
 
 
@@ -51,7 +49,7 @@ class JobAdmin(admin.ModelAdmin):
     list_display = JOB_LIST_DISPLAY
     list_display_links = ['__unicode__']
     list_editable = ['priority', 'production_line']
-    list_filter = ['product__department', 'production_line', 'customer', 'product']
+    list_filter = ['production_line', 'customer', 'product']
     search_fields = ['refs', 'product__part_number', 'customer__name']
     readonly_fields = ['ctime', 'mtime']
 
@@ -71,9 +69,6 @@ class JobAdmin(admin.ModelAdmin):
         )
 
     inlines = [RunInline]
-
-    def product_department(self, obj):
-        return obj.product.get_department_display()
 
     def product_description(self, obj):
         desc = obj.product.description

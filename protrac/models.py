@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from django.db import models
 
-from app_settings import DEPT_CHOICES
 from app_settings import PRODUCTION_LINE_CHOICES
 
 
@@ -35,7 +34,6 @@ class Customer(models.Model):
     name = models.CharField(max_length=64, unique=True)
 
     class Meta:
-        # abstract = True
         ordering = ['name']
 
     def __unicode__(self):
@@ -46,8 +44,6 @@ class Product(TimestampModel):
     """
     Products
     """
-    department = models.CharField(max_length=64, choices=DEPT_CHOICES,
-        help_text='You can edit these choices in settings.py')
     part_number = models.CharField(max_length=64, db_index=True, unique=True)
     description = models.TextField(blank=True, null=True)
     setup = models.TextField(blank=True, null=True)
