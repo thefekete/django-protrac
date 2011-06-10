@@ -150,8 +150,6 @@ class ScheduleTest(TestCase):
                 material_wt=3)
 
     def test_manager(self):
-        # TODO: test ScheduleManager filtering
-
         scheduled = (
                 # Job 001
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
