@@ -63,9 +63,12 @@ class Product(TimestampModel):
 
     def avg_cycle_time(self):
         run_set = Run.objects.filter(job__product=self)
-        qty = run_set.aggregate(models.Sum('qty'))['qty__sum']
-        duration = sum([ o.duration() for o in run_set ], timedelta())
-        return duration / qty
+        if not run_set:
+            return None
+        else:
+            qty = run_set.aggregate(models.Sum('qty'))['qty__sum']
+            duration = sum([ o.duration() for o in run_set ], timedelta())
+            return duration / qty
 
 
 class Job(TimestampModel):
@@ -143,10 +146,14 @@ class Job(TimestampModel):
         return self.product.duration(self.qty_remaining())
 
     def avg_cycle_time(self):
-        qty = self.run_set.aggregate(models.Sum('qty'))['qty__sum']
-        duration = sum([ t.duration() for t in self.run_set.all() ],
-                timedelta())
-        return duration / qty
+        run_set = self.run_set.all()
+        if not run_set:
+            return None
+        else:
+            qty = run_set.aggregate(models.Sum('qty'))['qty__sum']
+            duration = sum([ t.duration() for t in run_set.all() ],
+                    timedelta())
+            return duration / qty
 
 
 class Run(TimestampModel):

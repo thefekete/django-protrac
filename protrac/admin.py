@@ -19,7 +19,8 @@ admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['part_number', 'description', 'material_wt', 'cycle_time']
+    list_display = ['part_number', 'description', 'material_wt', 'cycle_time',
+            'avg_cycle_time']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
     search_fields = ('part_number', 'description')
@@ -40,9 +41,9 @@ admin.site.register(Product, ProductAdmin)
 
 
 JOB_LIST_DISPLAY = ['__unicode__', 'priority', 'production_line',
-    'product_admin_link', 'product_description', 'customer', 'refs',
-    'due_date', 'remaining', 'weight_remaining', 'duration_remaining',
-    'suspended', 'void']
+    'product_admin_link', 'customer', 'refs', 'due_date', 'remaining',
+    'weight_remaining', 'duration_remaining', 'avg_cycle_time', 'suspended',
+    'void']
 
 
 class JobAdmin(admin.ModelAdmin):
