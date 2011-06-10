@@ -19,7 +19,7 @@ admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['part_number', 'description', 'cycle_time', 'material_wt']
+    list_display = ['part_number', 'description', 'material_wt', 'cycle_time']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
     search_fields = ('part_number', 'description')

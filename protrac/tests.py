@@ -30,6 +30,35 @@ class ProductTest(TestCase):
         self.assertEqual(p.gross_wt(), 0)
         self.assertEqual(p.gross_wt(50), 0)
 
+    def test_avg_cycle_time(self):
+        c = Customer.objects.create(name='cust1')
+        p = Product.objects.create(part_number='M1911', cycle_time=2,
+                material_wt=3)
+
+        j1 = Job.objects.create(product=p, qty=1000, customer=c)
+        Run.objects.create(job=j1, operator='Bob', qty=30,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 1, 0))
+        Run.objects.create(job=j1, operator='Bob', qty=65,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 2, 0))
+        Run.objects.create(job=j1, operator='Bob', qty=55,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 2, 0))
+
+        j2 = Job.objects.create(product=p, qty=1000, customer=c)
+        Run.objects.create(job=j2, operator='Bob', qty=60,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 3, 0))
+        Run.objects.create(job=j2, operator='Bob', qty=40,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 1, 0))
+        Run.objects.create(job=j2, operator='Bob', qty=200,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 6, 0))
+
+        self.assertEqual(p.avg_cycle_time(), timedelta(seconds=2))
+
 
 class JobTest(TestCase):
 
@@ -123,6 +152,19 @@ class JobTest(TestCase):
 
         update_priority(2, 32)
         assert_priority((0, 0, 30, 20, 10))
+
+    def test_avg_cycle_time(self):
+        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
+        Run.objects.create(job=j, operator='Bob', qty=60,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 3, 0))
+        Run.objects.create(job=j, operator='Bob', qty=40,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 1, 0))
+        Run.objects.create(job=j, operator='Bob', qty=200,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 6, 0))
+        self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
 
 
 class RunTest(TestCase):

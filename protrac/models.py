@@ -5,9 +5,6 @@ from django.db import models
 from app_settings import PRODUCTION_LINE_CHOICES
 
 
-# TODO Add aggregate average of cycle time to Job and Product
-
-
 ###################
 # ABSTRACT MODELS #
 ###################
@@ -63,6 +60,12 @@ class Product(TimestampModel):
 
     def gross_wt(self, qty=1):
         return self.material_wt * qty
+
+    def avg_cycle_time(self):
+        run_set = Run.objects.filter(job__product=self)
+        qty = run_set.aggregate(models.Sum('qty'))['qty__sum']
+        duration = sum([ o.duration() for o in run_set ], timedelta())
+        return duration / qty
 
 
 class Job(TimestampModel):
@@ -139,6 +142,12 @@ class Job(TimestampModel):
     def duration_remaining(self):
         return self.product.duration(self.qty_remaining())
 
+    def avg_cycle_time(self):
+        qty = self.run_set.aggregate(models.Sum('qty'))['qty__sum']
+        duration = sum([ t.duration() for t in self.run_set.all() ],
+                timedelta())
+        return duration / qty
+
 
 class Run(TimestampModel):
     """
@@ -161,8 +170,11 @@ class Run(TimestampModel):
     def weight(self):
         return self.job.product.gross_wt(self.qty)
 
+    def duration(self):
+        return self.end - self.start
+
     def cycle_time(self):
-        return (self.end - self.start) / self.qty
+        return self.duration() / self.qty
 
 
 ################
