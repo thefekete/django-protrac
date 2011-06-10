@@ -122,13 +122,25 @@ class ScheduleAdmin(JobAdmin):
     def has_delete_permission(self, request):
         return False
 
+    # Overrides/extends admin view to include more context
+    def changelist_view(self, request, extra_context=None):
+        my_context = { 'pen15': 'How\'s about that?!' }
+        return super(ScheduleAdmin, self).changelist_view(request,
+                extra_context=my_context)
+
+    # Adds urls to admin area
+    # self.admin_site.admin_view() adds admin security and stuff to view
     def get_urls(self):
+        from views import admin_custom_view
         urls = super(ScheduleAdmin, self).get_urls()
         my_urls = patterns('',
-            (r'^my_view/$', self.admin_site.admin_view(self.my_view))
+            (r'^my_view/$', self.admin_site.admin_view(self.my_view)),
+            (r'^admin_custom_view/$',
+                self.admin_site.admin_view(admin_custom_view))
         )
         return my_urls + urls
 
+    # Views can be in model admin
     def my_view(self, request):
         import datetime
         from django.http import HttpResponse
