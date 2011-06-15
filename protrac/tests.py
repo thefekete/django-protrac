@@ -3,41 +3,65 @@ from datetime import datetime, timedelta
 from django.test import TestCase
 
 from models import Customer, Job, Product, ProductionLine, Run, Schedule
+from app_settings import LINE_CATEGORY_CHOICES
 
+
+##########
+# Models #
+##########
 
 class CustomerTest(TestCase):
-    # this is kinda retarded, but we'll do it anyways...
+
     def test_customer(self):
+        # Just test object creation
         c = Customer.objects.create(name='ABC Widgets')
-        self.assertEqual(c.name, 'ABC Widgets')
+        self.assertEqual(unicode(c), u'ABC Widgets')
+        self.assertEqual(c.name, u'ABC Widgets')
+
+
+class ProductionLineTest(TestCase):
+
+    def test_model(self):
+        # Just test object creation...
+        pl = ProductionLine.objects.create(name='Line 1',
+                category=LINE_CATEGORY_CHOICES[0][0])
+
+        self.assertEqual(unicode(pl), u'Line 1')
+        self.assertEqual(pl.name, u'Line 1')
+        self.assertEqual(pl.get_category_display(),
+                LINE_CATEGORY_CHOICES[0][1])
 
 
 class ProductTest(TestCase):
 
-    def test_product(self):
-        p = Product.objects.create(part_number='M2', cycle_time=492.5,
+    def setUp(self):
+        self.M2 = Product.objects.create(part_number='M2', cycle_time=492.5,
                 material_wt=1.75)
-        self.assertEqual(unicode(p), 'M2')
-        self.assertEqual(p.duration(), timedelta(seconds=492.5))
-        self.assertEqual(p.duration(25), timedelta(seconds=492.5*25))
-        self.assertEqual(p.gross_wt(), 1.75)
-        self.assertEqual(p.gross_wt(50), 1.75*50)
+        self.M16 = Product.objects.create(part_number='M16', cycle_time=0,
+                material_wt=0)
+        self.M1911 = Product.objects.create(part_number='M1911', cycle_time=2,
+                material_wt=3)
 
-        p.material_wt = 0
-        p.cycle_time = 0
-        p.save()
-        self.assertEqual(unicode(p), 'M2')
-        self.assertEqual(p.duration(), timedelta(seconds=0))
-        self.assertEqual(p.duration(25), timedelta(seconds=0))
-        self.assertEqual(p.gross_wt(), 0)
-        self.assertEqual(p.gross_wt(50), 0)
+    def test_product_part_number(self):
+        self.assertEqual(unicode(self.M2), u'M2')
+        self.assertEqual(unicode(self.M16), u'M16')
+
+    def test_product_duration(self):
+        self.assertEqual(self.M2.duration(), timedelta(seconds=492.5))
+        self.assertEqual(self.M2.duration(250), timedelta(seconds=123125.0))
+        self.assertEqual(self.M16.duration(), timedelta(0))
+        self.assertEqual(self.M16.duration(250), timedelta(0))
+
+    def test_product_gross_wt(self):
+        self.assertEqual(self.M2.gross_wt(), 1.75)
+        self.assertEqual(self.M2.gross_wt(50), 87.5)
+        self.assertEqual(self.M16.gross_wt(), 0)
+        self.assertEqual(self.M16.gross_wt(50), 0)
 
     def test_avg_cycle_time(self):
         c = Customer.objects.create(name='cust1')
-        p = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
 
-        j1 = Job.objects.create(product=p, qty=1000, customer=c)
+        j1 = Job.objects.create(product=self.M1911, qty=1000, customer=c)
         Run.objects.create(job=j1, operator='Bob', qty=30,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 1, 0))
@@ -48,7 +72,7 @@ class ProductTest(TestCase):
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 2, 0))
 
-        j2 = Job.objects.create(product=p, qty=1000, customer=c)
+        j2 = Job.objects.create(product=self.M1911, qty=1000, customer=c)
         Run.objects.create(job=j2, operator='Bob', qty=60,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 3, 0))
@@ -59,7 +83,7 @@ class ProductTest(TestCase):
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 6, 0))
 
-        self.assertEqual(p.avg_cycle_time(), timedelta(seconds=2))
+        self.assertEqual(self.M1911.avg_cycle_time(), timedelta(seconds=2))
 
 
 class JobTest(TestCase):
