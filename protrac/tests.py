@@ -1,6 +1,8 @@
-from django.test import TestCase
 from datetime import datetime, timedelta
-from models import Customer, Job, Product, Run, Schedule
+
+from django.test import TestCase
+
+from models import Customer, Job, Product, ProductionLine, Run, Schedule
 
 
 class CustomerTest(TestCase):
@@ -64,6 +66,7 @@ class JobTest(TestCase):
 
     def setUp(self):
         self.c = Customer.objects.create(name='cust1')
+        self.pl = ProductionLine.objects.create(name='line 1', category='X')
         self.p = Product.objects.create(part_number='M1911', cycle_time=2,
                 material_wt=3)
 
@@ -106,7 +109,7 @@ class JobTest(TestCase):
         j = Job.objects.create(product=self.p, qty=1000, customer=self.c, pk=0)
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
 
-        j.production_line = 'I1'
+        j.production_line = self.pl
         j.save()
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
 
@@ -139,7 +142,7 @@ class JobTest(TestCase):
 
         # Create Jobs and assert that priorities start at 0
         for pk in range(5):
-            Job.objects.create(production_line='I1', product=self.p, qty=1000,
+            Job.objects.create(production_line=self.pl, product=self.p, qty=1000,
                     customer=self.c, pk=pk)
             self.assertEqual(Job.objects.get(pk=pk).priority, 0)
 
@@ -188,6 +191,7 @@ class ScheduleTest(TestCase):
 
     def setUp(self):
         self.c = Customer.objects.create(name='cust1')
+        self.pl = ProductionLine.objects.create(name='line 1', category='X')
         self.p = Product.objects.create(part_number='M1911', cycle_time=2,
                 material_wt=3)
 
@@ -195,13 +199,13 @@ class ScheduleTest(TestCase):
         scheduled = (
                 # Job 001
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line='I1', pk=1),
+                    production_line=self.pl, pk=1),
                 # Job 002
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line='I1', pk=2),
+                    production_line=self.pl, pk=2),
                 # Job 003
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    suspended='No material', production_line='I1', pk=3),)
+                    suspended='No material', production_line=self.pl, pk=3),)
         Run.objects.create(job=scheduled[1], qty=999, operator='j',
                 start=datetime.now(), end=datetime.now())
 
@@ -211,13 +215,13 @@ class ScheduleTest(TestCase):
                     pk=4),
                 # Job 005: void:
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line='I1', void=True, pk=5),
+                    production_line=self.pl, void=True, pk=5),
                 # Job 006: completed qty (via Run below):
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line='I1', pk=6),
+                    production_line=self.pl, pk=6),
                 # Job 007: overshoot qty (via Run below):
                 Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line='I1', pk=7),)
+                    production_line=self.pl, pk=7),)
         Run.objects.create(job=not_scheduled[2], qty=1000, operator='j',
                 start=datetime.now(), end=datetime.now())
         Run.objects.create(job=not_scheduled[3], qty=1001, operator='j',

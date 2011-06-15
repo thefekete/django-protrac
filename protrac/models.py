@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.db import models
 
-from app_settings import PRODUCTION_LINE_CHOICES
+from app_settings import LINE_CATEGORY_CHOICES
 
 
 ###################
@@ -37,6 +37,22 @@ class Customer(models.Model):
         return self.name
 
 
+class ProductionLine(models.Model):
+    """
+    Production Line
+    """
+    name = models.CharField(max_length=64, unique=True)
+    category = models.CharField(max_length=1,
+        choices=LINE_CATEGORY_CHOICES, blank=True, null=True,
+        help_text='you can edit these choices in settings.py')
+
+    class Meta:
+        ordering = ['name']
+
+    def __unicode__(self):
+        return unicode(self.name)
+
+
 class Product(TimestampModel):
     """
     Products
@@ -45,9 +61,9 @@ class Product(TimestampModel):
     description = models.TextField(blank=True, null=True)
     setup = models.TextField(blank=True, null=True)
     cycle_time = models.FloatField(
-        help_text='Time per unit in seconds (eg 5.73)')
+        help_text='time per unit in seconds (eg 5.73)')
     material_wt = models.FloatField(default=0, verbose_name='Material Weight',
-        help_text='Material Weight per Unit in Pounds')
+        help_text='material Weight per Unit in Pounds')
 
     class Meta:
         ordering = ['part_number']
@@ -78,18 +94,17 @@ class Job(TimestampModel):
     Jobs represent individual line items from POs or WOs. Their priority
     represents the order in which production resources should be allocated.
     """
-    production_line = models.CharField(max_length=2,
-        choices=PRODUCTION_LINE_CHOICES, blank=True, null=True, db_index=True,
-        help_text='You can edit these choices in settings.py')
+    production_line = models.ForeignKey('ProductionLine', blank=True,
+            null=True, db_index=True)
     product = models.ForeignKey('Product')
     qty = models.PositiveIntegerField()
     customer = models.ForeignKey('Customer')
     refs = models.CharField(max_length=128, verbose_name='References',
-            help_text='Comma Separated List')
+            help_text='comma Separated List')
     due_date = models.DateField(blank=True, null=True)
     priority = models.PositiveIntegerField(default=0, db_index=True)
     suspended = models.CharField(max_length=32, blank=True, null=True,
-            help_text='Give reason for suspension, or blank for not suspended')
+            help_text='give reason for suspension, or blank for not suspended')
     void = models.BooleanField(default=False, db_index=True)
 
     class Meta:

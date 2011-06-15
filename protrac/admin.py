@@ -1,21 +1,32 @@
 from django.contrib import admin
 from django.conf.urls.defaults import patterns
 from django.template.defaultfilters import force_escape
+
 from models import *
 from utils import get_change_url
 
 
-# Model Admin Inlines
+#######################
+# Model Admin Inlines #
+#######################
 
 class RunInline(admin.TabularInline):
     model = Run
 
 
-# Model Admins
+################
+# Model Admins #
+################
 
 class CustomerAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 admin.site.register(Customer, CustomerAdmin)
+
+
+class ProductionLineAdmin(admin.ModelAdmin):
+    display_links = ['name',]
+    list_filter = ['category']
+admin.site.register(ProductionLine, ProductionLineAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
@@ -23,7 +34,7 @@ class ProductAdmin(admin.ModelAdmin):
             'avg_cycle_time']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
-    search_fields = ('part_number', 'description')
+    search_fields = ['part_number', 'description']
     fieldsets = (
         (None, {
             'fields': ('part_number', ('cycle_time',
@@ -105,6 +116,31 @@ class JobAdmin(admin.ModelAdmin):
 admin.site.register(Job, JobAdmin)
 
 
+class RunAdmin(admin.ModelAdmin):
+    list_display = ['__unicode__', 'job_admin_link', 'start', 'end', 'qty',
+           'weight', 'cycle_time', 'operator']
+    readonly_fields = ['ctime', 'mtime']
+    search_fields = ['job__product__part_number', 'job__customer__name',
+           'job__refs', 'operator',]
+    fieldsets = (
+        (None, {
+            'fields': (('job', 'qty'), 'operator', 'start', 'end')
+            }),
+        ('Creation/Modification Times', {
+            'classes': ('collapse',),
+            'fields': ('ctime', 'mtime')
+            }),
+        )
+
+    def job_admin_link(self, obj):
+        j = obj.job
+        return u'<a href="%s">%s</a>' % (
+            get_change_url(j), j)
+    job_admin_link.allow_tags = True
+    job_admin_link.short_description = 'Job'
+admin.site.register(Run, RunAdmin)
+
+
 class ScheduleAdmin(JobAdmin):
     ld = list(JOB_LIST_DISPLAY)
     ld.remove('void')
@@ -144,28 +180,3 @@ class ScheduleAdmin(JobAdmin):
         html = "<html><body>It is now %s.</body></html>" % now
         return HttpResponse(html)
 admin.site.register(Schedule, ScheduleAdmin)
-
-
-class RunAdmin(admin.ModelAdmin):
-    list_display = ['__unicode__', 'job_admin_link', 'start', 'end', 'qty',
-           'weight', 'cycle_time', 'operator']
-    readonly_fields = ['ctime', 'mtime']
-    search_fields = ('job__product__part_number', 'job__customer__name',
-           'job__refs', 'operator',)
-    fieldsets = (
-        (None, {
-            'fields': (('job', 'qty'), 'operator', 'start', 'end')
-            }),
-        ('Creation/Modification Times', {
-            'classes': ('collapse',),
-            'fields': ('ctime', 'mtime')
-            }),
-        )
-
-    def job_admin_link(self, obj):
-        j = obj.job
-        return u'<a href="%s">%s</a>' % (
-            get_change_url(j), j)
-    job_admin_link.allow_tags = True
-    job_admin_link.short_description = 'Job'
-admin.site.register(Run, RunAdmin)
