@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from models import Customer, Job, Product, ProductionLine, Run, Schedule
@@ -263,3 +265,28 @@ class ScheduleTest(TestCase):
             if n.pk in schedule_pks:
                 raise AssertionError(
                         '%s should not be in Schedule, but it is...' % repr(n))
+
+
+#########
+# Views #
+#########
+
+class ScheduleAdminViewTest(TestCase):
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        self.user = User.objects.create_user('user', 'a@b.com', 'password')
+        self.user.is_superuser = True
+
+    def test_admin_custom_view_no_login(self):
+        # this redirects to a login view
+        response = self.client.get(reverse('admin:admin_custom_view'))
+        # make sure we got a login page
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['user'].is_authenticated())
+        self.assertIn(
+                u'admin/login.html', [ t.name for t in response.templates ])
+        import pdb; pdb.set_trace()
+
+    def test_admin_custom_view_login(self):
+        response = self.client.login()

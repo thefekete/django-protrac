@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.conf.urls.defaults import patterns
+from django.conf.urls.defaults import patterns, url
 from django.template.defaultfilters import force_escape
 
 from models import *
@@ -166,9 +166,10 @@ class ScheduleAdmin(JobAdmin):
         from views import admin_custom_view
         urls = super(ScheduleAdmin, self).get_urls()
         my_urls = patterns('',
-            (r'^my_view/$', self.admin_site.admin_view(self.my_view)),
-            (r'^admin_custom_view/$',
-                self.admin_site.admin_view(admin_custom_view))
+            url(r'^my_view', self.admin_site.admin_view(self.my_view)),
+            url(r'^admin_custom_view',
+                self.admin_site.admin_view(admin_custom_view),
+                name='admin_custom_view')
         )
         return my_urls + urls
 
