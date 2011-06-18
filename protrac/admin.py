@@ -113,6 +113,16 @@ class JobAdmin(admin.ModelAdmin):
         return u'<span style="%s">%i / %i</span>' % (
             style, obj.qty_remaining(), obj.qty)
     remaining.allow_tags = True
+
+    def get_urls(self):
+        from views import job_schedule
+        urls = super(JobAdmin, self).get_urls()
+        my_urls = patterns('',
+            url(r'^job_schedule', self.admin_site.admin_view(job_schedule),
+                name='job_schedule'),
+        )
+        return my_urls + urls
+
 admin.site.register(Job, JobAdmin)
 
 

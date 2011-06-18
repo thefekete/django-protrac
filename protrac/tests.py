@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
@@ -271,12 +272,13 @@ class ScheduleTest(TestCase):
 # Views #
 #########
 
-class ScheduleAdminViewTest(TestCase):
+class AdminCustomViewTest(TestCase):
 
     def setUp(self):
-        from django.contrib.auth.models import User
         self.user = User.objects.create_user('user', 'a@b.com', 'password')
-        self.user.is_superuser = True
+        self.user.is_staff = True
+        #self.user.is_superuser = True
+        self.user.save()
 
     def test_admin_custom_view_no_login(self):
         # this redirects to a login view
@@ -284,9 +286,40 @@ class ScheduleAdminViewTest(TestCase):
         # make sure we got a login page
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context['user'].is_authenticated())
-        self.assertIn(
-                u'admin/login.html', [ t.name for t in response.templates ])
-        import pdb; pdb.set_trace()
+        self.assertTemplateUsed(response, 'admin/login.html')
 
     def test_admin_custom_view_login(self):
-        response = self.client.login()
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+        response = self.client.get(reverse('admin:admin_custom_view'))
+        self.assertEqual(response.status_code, 200)
+        # the HttpResponse in admin_custom_view doesn't give a context, so
+        # this doesn't work here
+        #self.assertTrue(response.context['user'].is_authenticated())
+        self.assertTemplateNotUsed(response, 'admin/login.html')
+
+
+class AdminScheduleViewTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user('user', 'a@b.com', 'password')
+        self.user.is_staff = True
+        self.user.save()
+
+    def test_admin_schedule_view_no_login(self):
+        # this redirects to a login view
+        response = self.client.get(reverse('admin:job_schedule'))
+        # make sure we got a login page
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['user'].is_authenticated())
+        self.assertTemplateUsed(response, 'admin/login.html')
+
+    def test_admin_custom_view_login(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+        response = self.client.get(reverse('admin:job_schedule'))
+        import pdb; pdb.set_trace()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['user'].is_authenticated())
+        self.assertTemplateNotUsed(response, 'admin/login.html')
+        self.assertTemplateUsed(response, 'protrac/admin_schedule.html')
