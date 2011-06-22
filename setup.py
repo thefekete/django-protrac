@@ -35,10 +35,13 @@ for dirpath, dirnames, filenames in os.walk(package_dir):
         packages.append(".".join(fullsplit(dirpath)))
 
 
+# need to go 4 deep for admin templates, plus one for good measure
 template_patterns = [
         'templates/*.html',
         'templates/*/*.html',
-        'templates/*/*/*.html',]
+        'templates/*/*/*.html',
+        'templates/*/*/*/*.html',
+        'templates/*/*/*/*/*.html',]
 
 package_data = dict(
         (package_name, template_patterns) for package_name in packages)
