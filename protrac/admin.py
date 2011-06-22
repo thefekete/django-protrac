@@ -30,7 +30,7 @@ admin.site.register(ProductionLine, ProductionLineAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['part_number', 'description', 'material_wt', 'cycle_time',
+    list_display = ['part_number', 'material', 'cycle_time',
             'avg_cycle_time']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
@@ -48,11 +48,14 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('ctime', 'mtime')
             }),
         )
+
+    def material(self, obj):
+        return u'%f lbs' % obj.material_wt
 admin.site.register(Product, ProductAdmin)
 
 
 JOB_LIST_DISPLAY = ['__unicode__', 'priority', 'production_line',
-    'product_admin_link', 'customer', 'refs', 'due_date', 'remaining',
+    'product_admin_link', 'customer', 'refs', 'remaining',
     'weight_remaining', 'duration_remaining', 'avg_cycle_time', 'suspended',
     'void']
 
@@ -98,7 +101,7 @@ class JobAdmin(admin.ModelAdmin):
 
     def weight_remaining(self, obj):
         try:
-            return '%.1f lbs.' % obj.weight_remaining()
+            return '%.1f lbs' % obj.weight_remaining()
         except TypeError:
             return None
 
@@ -183,8 +186,10 @@ class ScheduleAdmin(JobAdmin):
         )
         return my_urls + urls
 
-    # Views can be in model admin
     def my_view(self, request):
+        """
+        Example view definition in admin class definition
+        """
         import datetime
         from django.http import HttpResponse
         now = datetime.datetime.now()
