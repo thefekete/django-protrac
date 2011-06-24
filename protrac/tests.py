@@ -13,26 +13,11 @@ from models import Customer, Job, Product, ProductionLine, Run
 # Models #
 ##########
 
-class CustomerTest(TestCase):
-
-    def test_customer(self):
-        # Just test object creation
-        c = Customer.objects.create(name='ABC Widgets')
-        self.assertEqual(unicode(c), u'ABC Widgets')
-        self.assertEqual(c.name, u'ABC Widgets')
-
-
 class ProductionLineTest(TestCase):
 
-    def test_model(self):
-        # Just test object creation...
-        pl = ProductionLine.objects.create(name='Line 1',
-                category=LINE_CATEGORY_CHOICES[0][0])
-
-        self.assertEqual(unicode(pl), u'Line 1')
-        self.assertEqual(pl.name, u'Line 1')
-        self.assertEqual(pl.get_category_display(),
-                LINE_CATEGORY_CHOICES[0][1])
+    def test_scheduled_jobs(self):
+        # TODO: Add tests for scheduled_jobs()
+        pass
 
 
 class ProductTest(TestCase):
@@ -44,10 +29,6 @@ class ProductTest(TestCase):
                 material_wt=0)
         self.M1911 = Product.objects.create(part_number='M1911', cycle_time=2,
                 material_wt=3)
-
-    def test_product_part_number(self):
-        self.assertEqual(unicode(self.M2), u'M2')
-        self.assertEqual(unicode(self.M16), u'M16')
 
     def test_product_duration(self):
         self.assertEqual(self.M2.duration(), timedelta(seconds=492.5))
@@ -90,12 +71,31 @@ class ProductTest(TestCase):
 
 
 class JobTest(TestCase):
+    # FIXME: Loose stupid test_methods() and test them individually
 
     def setUp(self):
         self.c = Customer.objects.create(name='cust1')
         self.pl = ProductionLine.objects.create(name='line 1', category='X')
         self.p = Product.objects.create(part_number='M1911', cycle_time=2,
                 material_wt=3)
+
+    def test_qty_done(self):
+        pass
+
+    def test_qty_remaining(self):
+        pass
+
+    def test_weight(self):
+        pass
+
+    def test_weight_remaining(self):
+        pass
+
+    def test_duration(self):
+        pass
+
+    def test_duration_remianing(self):
+        pass
 
     def test_methods(self):
         methods = ('qty_done', 'qty_remaining', 'weight', 'weight_remaining',
@@ -157,7 +157,21 @@ class JobTest(TestCase):
                 operator='Johnny', qty=1)
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
 
+    def test_avg_cycle_time(self):
+        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
+        Run.objects.create(job=j, operator='Bob', qty=60,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 3, 0))
+        Run.objects.create(job=j, operator='Bob', qty=40,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 1, 0))
+        Run.objects.create(job=j, operator='Bob', qty=200,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 6, 0))
+        self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
+
     def test_prioritize(self):
+        # FIXME: Update test_prioritize for new functionality (per prod line)
         def update_priority(pkey, priority):
             o = Job.objects.get(pk=pkey)
             o.priority = priority
@@ -183,18 +197,9 @@ class JobTest(TestCase):
         update_priority(2, 32)
         assert_priority((0, 0, 30, 20, 10))
 
-    def test_avg_cycle_time(self):
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
-        Run.objects.create(job=j, operator='Bob', qty=60,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 3, 0))
-        Run.objects.create(job=j, operator='Bob', qty=40,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 1, 0))
-        Run.objects.create(job=j, operator='Bob', qty=200,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 6, 0))
-        self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
+    def test_scheduled_manager_method(self):
+        # TODO: Add tests for scheduled() in model manager
+        pass
 
 
 class RunTest(TestCase):
@@ -206,6 +211,7 @@ class RunTest(TestCase):
         self.j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
 
     def test_methods(self):
+        # FIXME: Test methods individually
         # run of 100 parts over 3 minutes
         r = Run.objects.create(job=self.j, operator='Bob', qty=100,
                 start=datetime(2000, 1, 1, 0, 0, 0),
@@ -213,6 +219,19 @@ class RunTest(TestCase):
         self.assertEqual(r.weight(), 300) # 100ea * 3lbs
         self.assertEqual(r.cycle_time(), timedelta(seconds=1.8)) # 180s / 100ea
 
+    def test_weight(self):
+        pass
+
+    def test_duration(self):
+        pass
+
+    def test_cycle_time(self):
+        pass
+
+
+#########
+# Views #
+#########
 
 class JobScheduleViewTest(TestCase):
 
@@ -243,6 +262,7 @@ class JobScheduleViewTest(TestCase):
         cust = Customer.objects.create(name='Bills Bakery')
         prod = Product.objects.create(part_number='M1911', cycle_time=2,
                 material_wt=3)
+
         for abbr, cat in LINE_CATEGORY_CHOICES:
             # make 3 production lines for each line category
             for x in range(3):
@@ -262,5 +282,4 @@ class JobScheduleViewTest(TestCase):
         self.assertTemplateNotUsed(response, 'admin/login.html')
         self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
 
-        #import pdb
-        #pdb.set_trace()
+        # TODO: Test view context and possibly content

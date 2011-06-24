@@ -2,66 +2,66 @@ from django.contrib import admin
 from django.conf.urls.defaults import patterns, url
 from django.template.defaultfilters import force_escape
 
-from models import *
+from models import Customer, Job, Product, ProductionLine, Run
 from utils import get_change_url
 
 
-#######################
-# Model Admin Inlines #
-#######################
-
-class RunInline(admin.TabularInline):
-    model = Run
-
-
-################
-# Model Admins #
-################
-
 class CustomerAdmin(admin.ModelAdmin):
-    search_fields = ('name',)
+    search_fields = ['name']
+
 admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductionLineAdmin(admin.ModelAdmin):
-    display_links = ['name',]
+    display_links = ['name']
     list_filter = ['category']
+
 admin.site.register(ProductionLine, ProductionLineAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['part_number', 'material', 'cycle_time',
-            'avg_cycle_time']
+    list_display = ['part_number',
+                    'material',
+                    'cycle_time',
+                    'avg_cycle_time']
     list_display_links = ['part_number']
     readonly_fields = ['ctime', 'mtime']
     search_fields = ['part_number', 'description']
     fieldsets = (
         (None, {
-            'fields': ('part_number', ('cycle_time',
-                'material_wt'),)
+            'fields': ['part_number', ('cycle_time', 'material_wt')]
             }),
         ('Detailed Informaion', {
-            'fields': ('description', 'setup')
+            'fields': ['description', 'setup']
             }),
         ('Creation/Modification Times', {
-            'classes': ('collapse',),
-            'fields': ('ctime', 'mtime')
+            'classes': ['collapse'],
+            'fields': ['ctime', 'mtime']
             }),
         )
 
     def material(self, obj):
         return u'%f lbs' % obj.material_wt
+
 admin.site.register(Product, ProductAdmin)
 
 
-JOB_LIST_DISPLAY = ['__unicode__', 'priority', 'production_line',
-    'product_admin_link', 'customer', 'refs', 'remaining',
-    'weight_remaining', 'duration_remaining', 'avg_cycle_time', 'suspended',
-    'void']
-
+class RunInline(admin.TabularInline):
+    model = Run
 
 class JobAdmin(admin.ModelAdmin):
-    list_display = JOB_LIST_DISPLAY
+    list_display = ['__unicode__',
+                    'priority',
+                    'production_line',
+                    'product_admin_link',
+                    'customer',
+                    'refs',
+                    'remaining',
+                    'weight_remaining',
+                    'duration_remaining',
+                    'avg_cycle_time',
+                    'suspended',
+                    'void']
     list_display_links = ['__unicode__']
     list_editable = ['priority', 'production_line']
     list_filter = ['production_line', 'customer', 'product']
@@ -70,16 +70,14 @@ class JobAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': (('production_line', 'priority'), ('suspended',
-                'void'))
+            'fields': [('production_line', 'priority'), ('suspended', 'void')]
             }),
         ('Order Info', {
-            'fields': (('customer', 'due_date'), 'refs', ('product',
-                'qty'))
+            'fields': [('customer', 'due_date'), 'refs', ('product', 'qty')]
             }),
         ('Creation/Modification Times', {
-            'classes': ('collapse',),
-            'fields': ('ctime', 'mtime')
+            'classes': ['collapse'],
+            'fields': ['ctime', 'mtime']
             }),
         )
 
@@ -118,6 +116,7 @@ class JobAdmin(admin.ModelAdmin):
     remaining.allow_tags = True
 
     def get_urls(self):
+        # Ties the schedule view into the admin
         from views import schedule
         urls = super(JobAdmin, self).get_urls()
         my_urls = patterns('',
@@ -130,19 +129,25 @@ admin.site.register(Job, JobAdmin)
 
 
 class RunAdmin(admin.ModelAdmin):
-    list_display = ['__unicode__', 'job_admin_link', 'start', 'end', 'qty',
-           'weight', 'cycle_time', 'operator']
+    list_display = ['__unicode__',
+                    'job_admin_link',
+                    'start',
+                    'end',
+                    'qty',
+                    'weight',
+                    'cycle_time',
+                    'operator']
     readonly_fields = ['ctime', 'mtime']
     search_fields = ['job__product__part_number', 'job__customer__name',
-           'job__refs', 'operator',]
+            'job__refs', 'operator']
     fieldsets = (
         (None, {
-            'fields': (('job', 'qty'), 'operator', 'start', 'end')
+            'fields': [('job', 'qty'), 'operator', 'start', 'end']
             }),
         ('Creation/Modification Times', {
-            'classes': ('collapse',),
-            'fields': ('ctime', 'mtime')
-            }),
+            'classes': ['collapse'],
+            'fields': ['ctime', 'mtime']
+            })
         )
 
     def job_admin_link(self, obj):
@@ -151,4 +156,5 @@ class RunAdmin(admin.ModelAdmin):
             get_change_url(j), j)
     job_admin_link.allow_tags = True
     job_admin_link.short_description = 'Job'
+
 admin.site.register(Run, RunAdmin)

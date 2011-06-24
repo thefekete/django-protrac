@@ -11,7 +11,9 @@ from app_settings import LINE_CATEGORY_CHOICES
 
 class TimestampModel(models.Model):
     """
-    Abstract Model Class for timestamped models
+    Abstract Model Class for timestamped models, includes creation and modified
+    timestamps.
+
     """
     ctime = models.DateTimeField(auto_now_add=True, verbose_name='Created')
     mtime = models.DateTimeField(auto_now=True, verbose_name='Modified')
@@ -27,6 +29,7 @@ class TimestampModel(models.Model):
 class Customer(models.Model):
     """
     Customers
+
     """
     name = models.CharField(max_length=64, unique=True)
 
@@ -40,6 +43,7 @@ class Customer(models.Model):
 class ProductionLine(models.Model):
     """
     Production Line
+
     """
     name = models.CharField(max_length=64, unique=True)
     category = models.CharField(max_length=1,
@@ -59,6 +63,7 @@ class ProductionLine(models.Model):
 class Product(TimestampModel):
     """
     Products
+
     """
     part_number = models.CharField(max_length=64, db_index=True, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -92,6 +97,11 @@ class Product(TimestampModel):
 
 class JobManager(models.Manager):
     def scheduled(self):
+        """
+        Scheduled Jobs have qty_ramining, are assigned a production_line and
+        are not voided.
+
+        """
         # use the database to filter on void and production_line, but check
         # each for qty_remaining.
         return Job.objects.filter(id__in=(
@@ -106,6 +116,7 @@ class Job(TimestampModel):
 
     Jobs represent individual line items from POs or WOs. Their priority
     represents the order in which production resources should be allocated.
+
     """
     production_line = models.ForeignKey('ProductionLine', blank=True,
             null=True, db_index=True)
@@ -139,6 +150,7 @@ class Job(TimestampModel):
         Re-assigns priority values for jobs in given production_line or all if
         not specified. Priorities become multiples of ten for easy ordering by
         hand
+
         """
         if production_line is None:
             lines = list(ProductionLine.objects.all())
@@ -193,9 +205,8 @@ class Job(TimestampModel):
 
 class Run(TimestampModel):
     """
-    Run Log
-
     Runs represent an actual production run towards a given Job.
+
     """
     job = models.ForeignKey('Job', db_index=True)
     qty = models.PositiveIntegerField()
