@@ -164,29 +164,6 @@ class Job(TimestampModel):
         if do_prioritize and self.is_scheduled():
             self.production_line.prioritize()
 
-    @classmethod
-    def prioritize(cls, production_line=None):
-        # TODO: Move prioritize to ProductionLine
-        """
-        Re-assigns priority values for jobs in given production_line or all if
-        not specified. Priorities become multiples of ten for easy ordering by
-        hand
-
-        """
-        if production_line is None:
-            lines = list(ProductionLine.objects.all())
-        else:
-            lines = [ production_line, ]
-
-        for line in lines:
-            for i, obj in enumerate(cls.objects.scheduled(
-                    ).filter(production_line=line
-                    ).filter(priority__gt=0
-                    ).order_by('priority')):
-                obj.priority = (i + 1) * 10
-                super(Job, obj).save()
-
-
     def is_scheduled(self):
         # this is slow, but simple
         return self.id in [ s.id for s in Job.objects.scheduled() ]
