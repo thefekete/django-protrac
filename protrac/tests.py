@@ -95,16 +95,32 @@ class JobTest(TestCase):
     # FIXME: Loose stupid test_methods() and test them individually
 
     def setUp(self):
-        self.c = Customer.objects.create(name='cust1')
-        self.pl = ProductionLine.objects.create(name='line 1', category='X')
-        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
+        self.customer = Customer.objects.create(name='cust1')
+        self.line = ProductionLine.objects.create(name='line 1',
+                category=LINE_CATEGORY_CHOICES[0][0])
+        self.product = Product.objects.create(part_number='M1911',
+                cycle_time=2, material_wt=3)
 
-    def test_qty_done(self):
-        pass
+    def test_qtys(self):
+        j = Job.objects.create(product=self.product, qty=1000,
+                customer=self.customer)
+        self.assertEqual(j.qty_done(), 0)
+        self.assertEqual(j.qty_remaining(), 1000)
 
-    def test_qty_remaining(self):
-        pass
+        Run.objects.create(job=j, qty=397, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.qty_done(), 397)
+        self.assertEqual(j.qty_remaining(), 603)
+
+        Run.objects.create(job=j, qty=603, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.qty_done(), 1000)
+        self.assertEqual(j.qty_remaining(), 0)
+
+        Run.objects.create(job=j, qty=256, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.qty_done(), 1256)
+        self.assertEqual(j.qty_remaining(), -256)
 
     def test_weight(self):
         pass
@@ -131,7 +147,7 @@ class JobTest(TestCase):
                     raise AssertionError('%s[%s].%s() returned %s expected %s'
                             % (obj.__class__.__name__, obj.pk, m, ret, v))
 
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
+        j = Job.objects.create(product=self.product, qty=1000, customer=self.customer)
 
         assert_methods(j, (0, 1000, 3000, 3000, timedelta(seconds=2000),
             timedelta(seconds=2000)))
@@ -149,15 +165,15 @@ class JobTest(TestCase):
         # Test product with zero weight
         self.p0 = Product.objects.create(part_number='M16', cycle_time=2,
                 material_wt=0)
-        j0 = Job.objects.create(product=self.p0, qty=1000, customer=self.c)
+        j0 = Job.objects.create(product=self.p0, qty=1000, customer=self.customer)
         assert_methods(j0, (0, 1000, 0, 0, timedelta(seconds=2000),
             timedelta(seconds=2000)))
 
     def test_is_scheduled(self):
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c, pk=0)
+        j = Job.objects.create(product=self.product, qty=1000, customer=self.customer, pk=0)
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
 
-        j.production_line = self.pl
+        j.production_line = self.line
         j.save()
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
 
@@ -179,7 +195,7 @@ class JobTest(TestCase):
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
 
     def test_avg_cycle_time(self):
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
+        j = Job.objects.create(product=self.product, qty=1000, customer=self.customer)
         Run.objects.create(job=j, operator='Bob', qty=60,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 3, 0))
@@ -204,8 +220,8 @@ class JobTest(TestCase):
 
         # Create Jobs and assert that priorities start at 0
         for pk in range(5):
-            Job.objects.create(production_line=self.pl, product=self.p, qty=1000,
-                    customer=self.c, pk=pk)
+            Job.objects.create(production_line=self.line, product=self.product,
+                    qty=1000, customer=self.customer, pk=pk)
             self.assertEqual(Job.objects.get(pk=pk).priority, 0)
 
         update_priority(2, 8)
