@@ -102,6 +102,10 @@ class JobTest(TestCase):
                 cycle_time=2, material_wt=3)
 
     def test_qtys(self):
+        """
+        Tests qty_done() and qty_remaining()
+
+        """
         j = Job.objects.create(product=self.product, qty=1000,
                 customer=self.customer)
         self.assertEqual(j.qty_done(), 0)
@@ -122,17 +126,37 @@ class JobTest(TestCase):
         self.assertEqual(j.qty_done(), 1256)
         self.assertEqual(j.qty_remaining(), -256)
 
-    def test_weight(self):
-        pass
+    def test_weights(self):
+        """
+        Tests weight() and weight_remaining()
 
-    def test_weight_remaining(self):
-        pass
+        """
+        p = Product.objects.create(part_number='M855', cycle_time=1,
+                material_wt=2.5)
+        j = Job.objects.create(product=p, qty=1000, customer=self.customer)
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), 2500)
 
-    def test_duration(self):
-        pass
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), 1250)
 
-    def test_duration_remianing(self):
-        pass
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), 0)
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), -1250)
+
+    def test_durations(self):
+        """
+        Tests duration() and duration_remaining()
+
+        """
 
     def test_methods(self):
         methods = ('qty_done', 'qty_remaining', 'weight', 'weight_remaining',
