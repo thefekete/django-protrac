@@ -92,14 +92,13 @@ class ProductTest(TestCase):
 
 
 class JobTest(TestCase):
-    # FIXME: Loose stupid test_methods() and test them individually
 
     def setUp(self):
         self.customer = Customer.objects.create(name='cust1')
         self.line = ProductionLine.objects.create(name='line 1',
                 category=LINE_CATEGORY_CHOICES[0][0])
         self.product = Product.objects.create(part_number='M1911',
-                cycle_time=2, material_wt=3)
+                cycle_time=1, material_wt=1)
 
     def test_qtys(self):
         """
@@ -152,6 +151,32 @@ class JobTest(TestCase):
         self.assertEqual(j.weight(), 2500)
         self.assertEqual(j.weight_remaining(), -1250)
 
+    def test_weights_zero(self):
+        """
+        Tests weight() and weight_remaining() with product weight of zero
+
+        """
+        p = Product.objects.create(part_number='Weightless', cycle_time=1,
+                material_wt=0)
+        j = Job.objects.create(product=p, qty=1000, customer=self.customer)
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
+
     def test_durations(self):
         """
         Tests duration() and duration_remaining()
@@ -159,7 +184,8 @@ class JobTest(TestCase):
         """
 
     def test_is_scheduled(self):
-        j = Job.objects.create(product=self.product, qty=1000, customer=self.customer, pk=0)
+        j = Job.objects.create(product=self.product, qty=1000,
+                customer=self.customer, pk=0)
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
 
         j.production_line = self.line
@@ -184,7 +210,10 @@ class JobTest(TestCase):
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
 
     def test_avg_cycle_time(self):
-        j = Job.objects.create(product=self.product, qty=1000, customer=self.customer)
+        p = Product.objects.create(part_number='M9',
+                cycle_time=2, material_wt=3)
+        j = Job.objects.create(product=p, qty=1000,
+                customer=self.customer)
         Run.objects.create(job=j, operator='Bob', qty=60,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 3, 0))
