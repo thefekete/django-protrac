@@ -299,28 +299,27 @@ class JobTest(TestCase):
 class RunTest(TestCase):
 
     def setUp(self):
-        self.c = Customer.objects.create(name='cust1')
-        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
-        self.j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
-
-    def test_methods(self):
-        # FIXME: Test methods individually
+        self.customer = Customer.objects.create(name='cust1')
+        self.product = Product.objects.create(part_number='M16',
+                cycle_time=2, material_wt=3)
+        self.job = Job.objects.create(product=self.product, qty=1000,
+                customer=self.customer)
         # run of 100 parts over 3 minutes
-        r = Run.objects.create(job=self.j, operator='Bob', qty=100,
+        self.run = Run.objects.create(job=self.job, operator='Bob', qty=100,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 3, 0))
-        self.assertEqual(r.weight(), 300) # 100ea * 3lbs
-        self.assertEqual(r.cycle_time(), timedelta(seconds=1.8)) # 180s / 100ea
 
     def test_weight(self):
-        pass
+        # 100 pcs * 3 lbs = 300 lbs
+        self.assertEqual(self.run.weight(), 300)
 
     def test_duration(self):
-        pass
+        # 3 min = 180 seconds
+        self.assertEqual(self.run.duration(), timedelta(seconds=180))
 
     def test_cycle_time(self):
-        pass
+        # 180 seconds / 100 pcs = 1.8 seconds/pc
+        self.assertEqual(self.run.cycle_time(), timedelta(seconds=1.8))
 
 
 #########
