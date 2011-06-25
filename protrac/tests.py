@@ -182,6 +182,26 @@ class JobTest(TestCase):
         Tests duration() and duration_remaining()
 
         """
+        p = Product.objects.create(part_number='Weightless', cycle_time=2.5,
+                material_wt=1)
+        j = Job.objects.create(product=p, qty=1000, customer=self.customer)
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=2500))
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=1250))
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=0))
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=-1250))
 
     def test_is_scheduled(self):
         j = Job.objects.create(product=self.product, qty=1000,
