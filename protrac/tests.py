@@ -219,35 +219,42 @@ class JobTest(TestCase):
                 end=datetime(2000, 1, 1, 0, 6, 0))
         self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
 
-    def test_scheduled_manager_method(self):
-        # TODO: Add tests for scheduled() in model manager
-        pass
+    def test_scheduled_manager_and_is_scheduled(self):
+        """
+        Tests scheduled() queryset and is_scheduled() model method
 
-    def test_is_scheduled(self):
+        """
         j = Job.objects.create(product=self.product, qty=1000,
                 customer=self.customer, pk=0)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
 
         j.production_line = self.line
         j.save()
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
+        self.assertIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), True)
 
         j.void = True
         j.save()
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
         j.void = False
         j.save()
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
+        self.assertIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), True)
 
         Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
                 operator='Johnny', qty=999)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
+        self.assertIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), True)
         Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
                 operator='Johnny', qty=1)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
         Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
                 operator='Johnny', qty=1)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
 
 
 class RunTest(TestCase):
