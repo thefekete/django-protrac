@@ -57,7 +57,19 @@ class ProductionLine(models.Model):
         return unicode(self.name)
 
     def scheduled_jobs(self):
-        return Job.objects.scheduled().filter(production_line=self)
+        return Job.objects.scheduled().filter(production_line=self).order_by(
+                'priority')
+
+    def prioritize(self):
+        """
+        Re-adjust priority for Jobs scheduled in this production line and space
+        out the priorities in multiples of 10 for manual priority entry.
+
+        """
+        for i, job in enumerate(
+                ( j for j in self.scheduled_jobs() if j.priority > 0 )):
+            job.priority = (i + 1) * 10
+            job.save(no_prioritize=True) # tell save not to prioritize again
 
 
 class Product(TimestampModel):
@@ -140,9 +152,17 @@ class Job(TimestampModel):
         return unicode(self.id).zfill(3)
 
     def save(self, *args, **kwargs):
+        # here we make sure we don't recursively prioritize to infinity
+        if 'no_prioritize' in kwargs:
+            do_prioritize = False
+            del kwargs['no_prioritize']
+        else:
+            do_prioritize = True
+
         super(Job, self).save(*args, **kwargs) # Call the "real" save()
-        # space priority values evenly again
-        self.prioritize(self.production_line)
+
+        if do_prioritize and self.is_scheduled():
+            self.production_line.prioritize()
 
     @classmethod
     def prioritize(cls, production_line=None):
