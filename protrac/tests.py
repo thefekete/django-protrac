@@ -203,6 +203,26 @@ class JobTest(TestCase):
         self.assertEqual(j.duration(), timedelta(seconds=2500))
         self.assertEqual(j.duration_remaining(), timedelta(seconds=-1250))
 
+    def test_avg_cycle_time(self):
+        p = Product.objects.create(part_number='M9',
+                cycle_time=2, material_wt=3)
+        j = Job.objects.create(product=p, qty=1000,
+                customer=self.customer)
+        Run.objects.create(job=j, operator='Bob', qty=60,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 3, 0))
+        Run.objects.create(job=j, operator='Bob', qty=40,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 1, 0))
+        Run.objects.create(job=j, operator='Bob', qty=200,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 6, 0))
+        self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
+
+    def test_scheduled_manager_method(self):
+        # TODO: Add tests for scheduled() in model manager
+        pass
+
     def test_is_scheduled(self):
         j = Job.objects.create(product=self.product, qty=1000,
                 customer=self.customer, pk=0)
@@ -228,53 +248,6 @@ class JobTest(TestCase):
         Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
                 operator='Johnny', qty=1)
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
-
-    def test_avg_cycle_time(self):
-        p = Product.objects.create(part_number='M9',
-                cycle_time=2, material_wt=3)
-        j = Job.objects.create(product=p, qty=1000,
-                customer=self.customer)
-        Run.objects.create(job=j, operator='Bob', qty=60,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 3, 0))
-        Run.objects.create(job=j, operator='Bob', qty=40,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 1, 0))
-        Run.objects.create(job=j, operator='Bob', qty=200,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 6, 0))
-        self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
-
-    def test_prioritize(self):
-        # FIXME: Update test_prioritize for new functionality (per prod line)
-        def update_priority(pkey, priority):
-            o = Job.objects.get(pk=pkey)
-            o.priority = priority
-            o.save()
-
-        def assert_priority(plist):
-            for pk, priority in enumerate(plist):
-                self.assertEqual(Job.objects.get(pk=pk).priority, priority)
-
-        # Create Jobs and assert that priorities start at 0
-        for pk in range(5):
-            Job.objects.create(production_line=self.line, product=self.product,
-                    qty=1000, customer=self.customer, pk=pk)
-            self.assertEqual(Job.objects.get(pk=pk).priority, 0)
-
-        update_priority(2, 8)
-        update_priority(3, 15)
-        assert_priority((0, 0, 10, 20, 0))
-
-        update_priority(4, 15)
-        assert_priority((0, 0, 10, 30, 20))
-
-        update_priority(2, 32)
-        assert_priority((0, 0, 30, 20, 10))
-
-    def test_scheduled_manager_method(self):
-        # TODO: Add tests for scheduled() in model manager
-        pass
 
 
 class RunTest(TestCase):
