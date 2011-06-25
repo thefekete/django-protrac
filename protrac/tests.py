@@ -158,41 +158,6 @@ class JobTest(TestCase):
 
         """
 
-    def test_methods(self):
-        methods = ('qty_done', 'qty_remaining', 'weight', 'weight_remaining',
-                'duration', 'duration_remaining')
-
-        def assert_methods(obj, vals):
-            for m, v in zip(methods, vals):
-                ret = getattr(obj, m)()
-                try:
-                    self.assertEqual(ret, v)
-                except AssertionError:
-                    raise AssertionError('%s[%s].%s() returned %s expected %s'
-                            % (obj.__class__.__name__, obj.pk, m, ret, v))
-
-        j = Job.objects.create(product=self.product, qty=1000, customer=self.customer)
-
-        assert_methods(j, (0, 1000, 3000, 3000, timedelta(seconds=2000),
-            timedelta(seconds=2000)))
-
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=250)
-        assert_methods(j, (250, 750, 3000, 2250, timedelta(seconds=2000),
-            timedelta(seconds=1500)))
-
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=750)
-        assert_methods(j, (1000, 0, 3000, 0, timedelta(seconds=2000),
-            timedelta(seconds=0)))
-
-        # Test product with zero weight
-        self.p0 = Product.objects.create(part_number='M16', cycle_time=2,
-                material_wt=0)
-        j0 = Job.objects.create(product=self.p0, qty=1000, customer=self.customer)
-        assert_methods(j0, (0, 1000, 0, 0, timedelta(seconds=2000),
-            timedelta(seconds=2000)))
-
     def test_is_scheduled(self):
         j = Job.objects.create(product=self.product, qty=1000, customer=self.customer, pk=0)
         self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
