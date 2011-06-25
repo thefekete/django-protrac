@@ -15,9 +15,30 @@ from models import Customer, Job, Product, ProductionLine, Run
 
 class ProductionLineTest(TestCase):
 
+    def setUp(self):
+        self.customer = Customer.objects.create(name='Bills Bakery')
+        self.product = Product.objects.create(part_number='M1', cycle_time=1,
+                material_wt=1)
+
     def test_scheduled_jobs(self):
-        # TODO: Add tests for scheduled_jobs()
-        pass
+        line1 = ProductionLine.objects.create(name='Line 1',
+                category=LINE_CATEGORY_CHOICES[0][0])
+        line2 = ProductionLine.objects.create(name='Line 2',
+                category=LINE_CATEGORY_CHOICES[0][0])
+
+        job_line1 = Job.objects.create(product=self.product, qty=1,
+                customer=self.customer, production_line=line1)
+        job_line2 = Job.objects.create(product=self.product, qty=1,
+                customer=self.customer, production_line=line2)
+        job_not_scheduled = Job.objects.create(product=self.product, qty=1,
+                customer=self.customer)
+
+        self.assertIn(job_line1, line1.scheduled_jobs())
+        self.assertNotIn(job_line1, line2.scheduled_jobs())
+        self.assertIn(job_line2, line2.scheduled_jobs())
+        self.assertNotIn(job_line1, line2.scheduled_jobs())
+        self.assertNotIn(job_not_scheduled, line1.scheduled_jobs())
+        self.assertNotIn(job_not_scheduled, line2.scheduled_jobs())
 
 
 class ProductTest(TestCase):
