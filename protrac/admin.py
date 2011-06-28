@@ -117,11 +117,13 @@ class JobAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         # Ties the schedule view into the admin
-        from views import schedule
+        from protrac.views import schedule
         urls = super(JobAdmin, self).get_urls()
         my_urls = patterns('',
-            url(r'^schedule', self.admin_site.admin_view(schedule),
-                name='schedule'),
+            url(r'^schedule/$',
+                self.admin_site.admin_view(schedule), name='schedule'),
+            url(r'^schedule/(?P<line_id>\d+)/$',
+                self.admin_site.admin_view(schedule), name='schedule'),
         )
         return my_urls + urls
 
