@@ -83,51 +83,83 @@ class ProductionLineTest(TestCase):
 class ProductTest(TestCase):
 
     def setUp(self):
-        self.M2 = Product.objects.create(part_number='M2', cycle_time=492.5,
-                material_wt=1.75)
-        self.M16 = Product.objects.create(part_number='M16', cycle_time=0,
-                material_wt=0)
-        self.M1911 = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
+        self.ints = Product.objects.create(part_number='M1911',
+                cycle_time=2, material_wt=3)
+        self.floats = Product.objects.create(part_number='M2',
+                cycle_time=492.5, material_wt=1.75)
+        self.zeros = Product.objects.create(part_number='M16',
+                cycle_time=0, material_wt=0)
+        self.cavities = Product.objects.create(part_number='M855',
+                cycle_time=10, material_wt=1, cavities=8)
+
+    def test_product_get_shots(self):
+        self.assertEqual(self.ints.get_shots(qty=0), 0)
+        self.assertEqual(self.ints.get_shots(qty=1), 1)
+        self.assertEqual(self.ints.get_shots(qty=10), 10)
+
+        self.assertEqual(self.cavities.get_shots(qty=0), 0)
+        self.assertEqual(self.cavities.get_shots(qty=1), 1)
+        self.assertEqual(self.cavities.get_shots(qty=8), 1)
+        self.assertEqual(self.cavities.get_shots(qty=9), 2)
+
+    def test_product_get_qty(self):
+        self.assertEqual(self.ints.get_qty(shots=0), 0)
+        self.assertEqual(self.ints.get_qty(shots=1), 1)
+        self.assertEqual(self.ints.get_qty(shots=10), 10)
+
+        self.assertEqual(self.cavities.get_qty(shots=0), 0)
+        self.assertEqual(self.cavities.get_qty(shots=1), 8)
+        self.assertEqual(self.cavities.get_qty(shots=10), 80)
 
     def test_product_duration(self):
-        self.assertEqual(self.M2.duration(), timedelta(seconds=492.5))
-        self.assertEqual(self.M2.duration(250), timedelta(seconds=123125.0))
-        self.assertEqual(self.M16.duration(), timedelta(0))
-        self.assertEqual(self.M16.duration(250), timedelta(0))
+        self.assertEqual(self.floats.duration(), timedelta(seconds=492.5))
+        self.assertEqual(self.floats.duration(250), timedelta(seconds=123125.0))
+
+        self.assertEqual(self.zeros.duration(), timedelta(0))
+        self.assertEqual(self.zeros.duration(250), timedelta(0))
+
+        self.assertEqual(self.cavities.duration(),
+                timedelta(seconds=10))
+        self.assertEqual(self.cavities.duration(17),
+                timedelta(seconds=30))
+        self.assertEqual(self.cavities.duration(1000),
+                timedelta(seconds=1250))
 
     def test_product_gross_wt(self):
-        self.assertEqual(self.M2.gross_wt(), 1.75)
-        self.assertEqual(self.M2.gross_wt(50), 87.5)
-        self.assertEqual(self.M16.gross_wt(), 0)
-        self.assertEqual(self.M16.gross_wt(50), 0)
+        self.assertEqual(self.floats.gross_wt(), 1.75)
+        self.assertEqual(self.floats.gross_wt(50), 87.5)
+
+        self.assertEqual(self.zeros.gross_wt(), 0)
+        self.assertEqual(self.zeros.gross_wt(50), 0)
+
+        self.assertEqual(self.cavities.gross_wt(), 1)
+        self.assertEqual(self.cavities.gross_wt(50), 7) # 1 lb / cycle
 
     def test_avg_cycle_time(self):
         c = Customer.objects.create(name='cust1')
 
-        j1 = Job.objects.create(product=self.M1911, qty=1000, customer=c)
-        Run.objects.create(job=j1, operator='Bob', qty=30,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 1, 0))
-        Run.objects.create(job=j1, operator='Bob', qty=65,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 2, 0))
-        Run.objects.create(job=j1, operator='Bob', qty=55,
-                start=datetime(2000, 1, 1, 0, 0, 0),
-                end=datetime(2000, 1, 1, 0, 2, 0))
-
-        j2 = Job.objects.create(product=self.M1911, qty=1000, customer=c)
-        Run.objects.create(job=j2, operator='Bob', qty=60,
+        j1 = Job.objects.create(product=self.ints, qty=1000, customer=c)
+        Run.objects.create(job=j1, operator='Bob', qty=60,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 3, 0))
-        Run.objects.create(job=j2, operator='Bob', qty=40,
+        Run.objects.create(job=j1, operator='Bob', qty=40,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 1, 0))
-        Run.objects.create(job=j2, operator='Bob', qty=200,
+        Run.objects.create(job=j1, operator='Bob', qty=200,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 6, 0))
 
-        self.assertEqual(self.M1911.avg_cycle_time(), timedelta(seconds=2))
+        self.assertEqual(self.ints.avg_cycle_time(), timedelta(seconds=2))
+
+        j2 = Job.objects.create(product=self.cavities, qty=1000, customer=c)
+        Run.objects.create(job=j2, operator='Bob', qty=30,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 2, 0))
+        Run.objects.create(job=j2, operator='Bob', qty=50,
+                start=datetime(2000, 1, 1, 0, 0, 0),
+                end=datetime(2000, 1, 1, 0, 3, 0))
+
+        self.assertEqual(self.cavities.avg_cycle_time(), timedelta(seconds=30))
 
 
 class JobTest(TestCase):

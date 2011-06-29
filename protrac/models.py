@@ -1,4 +1,5 @@
 from datetime import timedelta
+from math import ceil
 
 from django.db import models
 
@@ -80,10 +81,12 @@ class Product(TimestampModel):
     part_number = models.CharField(max_length=64, db_index=True, unique=True)
     description = models.TextField(blank=True, null=True)
     setup = models.TextField(blank=True, null=True)
+    cavities = models.PositiveIntegerField(default=1,
+            help_text='number of parts made per cycle')
     cycle_time = models.FloatField(
-        help_text='time per unit in seconds (eg 5.73)')
+        help_text='time per cycle in seconds (eg 5.73)')
     material_wt = models.FloatField(default=0, verbose_name='Material Weight',
-        help_text='material Weight per Unit in Pounds')
+        help_text='material Weight per cycle in Pounds')
 
     class Meta:
         ordering = ['part_number']
@@ -91,11 +94,17 @@ class Product(TimestampModel):
     def __unicode__(self):
         return unicode(self.part_number)
 
+    def get_shots(self, qty):
+        return int(ceil(float(qty) / self.cavities))
+
+    def get_qty(self, shots):
+        return shots * self.cavities
+
     def duration(self, qty=1):
-        return timedelta(seconds=self.cycle_time) * qty
+        return timedelta(seconds=self.cycle_time) * self.get_shots(qty)
 
     def gross_wt(self, qty=1):
-        return self.material_wt * qty
+        return self.material_wt * self.get_shots(qty)
 
     def avg_cycle_time(self):
         run_set = Run.objects.filter(job__product=self)
@@ -104,7 +113,7 @@ class Product(TimestampModel):
         else:
             qty = run_set.aggregate(models.Sum('qty'))['qty__sum']
             duration = sum([ o.duration() for o in run_set ], timedelta())
-            return duration / qty
+            return duration / self.get_shots(qty)
 
 
 class JobManager(models.Manager):
