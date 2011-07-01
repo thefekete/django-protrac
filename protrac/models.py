@@ -195,7 +195,7 @@ class Run(TimestampModel):
     """
     Run Log
 
-    Runs represent an actual production run towords a given Job.
+    Runs represent an actual production run towards a given Job.
     """
     job = models.ForeignKey('Job', db_index=True)
     qty = models.PositiveIntegerField()
