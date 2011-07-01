@@ -5,8 +5,8 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from models import Customer, Job, Product, ProductionLine, Run, Schedule
 from app_settings import LINE_CATEGORY_CHOICES
+from models import Customer, Job, Product, ProductionLine, Run
 
 
 ##########
@@ -212,60 +212,6 @@ class RunTest(TestCase):
                 end=datetime(2000, 1, 1, 0, 3, 0))
         self.assertEqual(r.weight(), 300) # 100ea * 3lbs
         self.assertEqual(r.cycle_time(), timedelta(seconds=1.8)) # 180s / 100ea
-
-
-class ScheduleTest(TestCase):
-
-    def setUp(self):
-        self.c = Customer.objects.create(name='cust1')
-        self.pl = ProductionLine.objects.create(name='line 1', category='X')
-        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
-
-    def test_manager(self):
-        scheduled = (
-                # Job 001
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line=self.pl, pk=1),
-                # Job 002
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line=self.pl, pk=2),
-                # Job 003
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    suspended='No material', production_line=self.pl, pk=3),)
-        Run.objects.create(job=scheduled[1], qty=999, operator='j',
-                start=datetime.now(), end=datetime.now())
-
-        not_scheduled = (
-                # Job 004: no production line:
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    pk=4),
-                # Job 005: void:
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line=self.pl, void=True, pk=5),
-                # Job 006: completed qty (via Run below):
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line=self.pl, pk=6),
-                # Job 007: overshoot qty (via Run below):
-                Job.objects.create(product=self.p, qty=1000, customer=self.c,
-                    production_line=self.pl, pk=7),)
-        Run.objects.create(job=not_scheduled[2], qty=1000, operator='j',
-                start=datetime.now(), end=datetime.now())
-        Run.objects.create(job=not_scheduled[3], qty=1001, operator='j',
-                start=datetime.now(), end=datetime.now())
-
-        job_pks = [ j.pk for j in Job.objects.all() ]
-        schedule_pks = [ j.pk for j in Schedule.objects.all() ]
-
-        for s in scheduled:
-            if s.pk not in schedule_pks:
-                raise AssertionError(
-                        '%s should be in Schedule, but its not...' % repr(s))
-
-        for n in not_scheduled:
-            if n.pk in schedule_pks:
-                raise AssertionError(
-                        '%s should not be in Schedule, but it is...' % repr(n))
 
 
 #########

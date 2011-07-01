@@ -52,6 +52,9 @@ class ProductionLine(models.Model):
     def __unicode__(self):
         return unicode(self.name)
 
+    def scheduled_jobs(self):
+        return Job.objects.scheduled().filter(production_line=self)
+
 
 class Product(TimestampModel):
     """
@@ -87,6 +90,16 @@ class Product(TimestampModel):
             return duration / qty
 
 
+class JobManager(models.Manager):
+    def scheduled(self):
+        # use the database to filter on void and production_line, but check
+        # each for qty_remaining.
+        return Job.objects.filter(id__in=(
+            x.id for x in Job.objects.filter(void=False).filter(
+                production_line__isnull=False)
+            if x.qty_remaining() > 0))
+
+
 class Job(TimestampModel):
     """
     Bob Loblaw Job Log
@@ -107,6 +120,8 @@ class Job(TimestampModel):
             help_text='give reason for suspension, or blank for not suspended')
     void = models.BooleanField(default=False, db_index=True)
 
+    objects = JobManager()
+
     class Meta:
         pass
 
@@ -115,28 +130,33 @@ class Job(TimestampModel):
 
     def save(self, *args, **kwargs):
         super(Job, self).save(*args, **kwargs) # Call the "real" save()
-        self.prioritize() # space priority values evenly again
+        # space priority values evenly again
+        self.prioritize(self.production_line)
 
     @classmethod
-    def prioritize(cls):
+    def prioritize(cls, production_line=None):
         """
-        Re-assigns priority values to be 10 apart for easy ordering by hand
+        Re-assigns priority values for jobs in given production_line or all if
+        not specified. Priorities become multiples of ten for easy ordering by
+        hand
         """
-        for i, o in enumerate(
-                cls.objects.filter(priority__gt=0).order_by('priority')):
-            o.priority = (i + 1) * 10
-            super(Job, o).save() # Call the "real" save()
+        if production_line is None:
+            lines = list(ProductionLine.objects.all())
+        else:
+            lines = [ production_line, ]
+
+        for line in lines:
+            for i, obj in enumerate(cls.objects.scheduled(
+                    ).filter(production_line=line
+                    ).filter(priority__gt=0
+                    ).order_by('priority')):
+                obj.priority = (i + 1) * 10
+                super(Job, obj).save()
+
 
     def is_scheduled(self):
-        return self.id in [ s.id for s in Schedule.objects.all() ]
-        # Here's the original method, the new one is slower but less
-        # complicated.
-        #if (self.production_line is not None
-        #    and self.qty_remaining() > 0
-        #    and self.void is not True):
-        #    return True
-        #else:
-        #    return False
+        # this is slow, but simple
+        return self.id in [ s.id for s in Job.objects.scheduled() ]
 
     def qty_done(self):
         qty = self.run_set.aggregate(models.Sum('qty'))['qty__sum']
@@ -197,34 +217,3 @@ class Run(TimestampModel):
 
     def cycle_time(self):
         return self.duration() / self.qty
-
-
-################
-# PROXY MODELS #
-################
-
-class ScheduleManager(models.Manager):
-    def get_query_set(self):
-        # use the database to filter on void and production_line, but check
-        # each for qty_remaining.
-        return Job.objects.filter(id__in=(
-            x.id for x in Job.objects.filter(void=False).filter(
-                production_line__isnull=False)
-            if x.qty_remaining() > 0))
-
-class Schedule(Job):
-    """
-    Scheduled Jobs Proxy
-
-    Filters Jobs to show only "scheduled jobs". I.E. those that are not void,
-    have an assigned production line, and have a quantity remaining to be
-    produced (duh). This is accomplished with the ScheduleManager model
-    manager above.
-    """
-
-    objects = ScheduleManager()
-
-    class Meta:
-        proxy = True
-        verbose_name = 'Scheduled Job'
-        verbose_name_plural = 'Job Schedule'
