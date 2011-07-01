@@ -57,7 +57,19 @@ class ProductionLine(models.Model):
         return unicode(self.name)
 
     def scheduled_jobs(self):
-        return Job.objects.scheduled().filter(production_line=self)
+        return Job.objects.scheduled().filter(production_line=self).order_by(
+                'priority')
+
+    def prioritize(self):
+        """
+        Re-adjust priority for Jobs scheduled in this production line and space
+        out the priorities in multiples of 10 for manual priority entry.
+
+        """
+        for i, job in enumerate(
+                ( j for j in self.scheduled_jobs() if j.priority > 0 )):
+            job.priority = (i + 1) * 10
+            job.save(no_prioritize=True) # tell save not to prioritize again
 
 
 class Product(TimestampModel):
@@ -140,32 +152,17 @@ class Job(TimestampModel):
         return unicode(self.id).zfill(3)
 
     def save(self, *args, **kwargs):
-        super(Job, self).save(*args, **kwargs) # Call the "real" save()
-        # space priority values evenly again
-        self.prioritize(self.production_line)
-
-    @classmethod
-    def prioritize(cls, production_line=None):
-        # TODO: Move prioritize to ProductionLine
-        """
-        Re-assigns priority values for jobs in given production_line or all if
-        not specified. Priorities become multiples of ten for easy ordering by
-        hand
-
-        """
-        if production_line is None:
-            lines = list(ProductionLine.objects.all())
+        # here we make sure we don't recursively prioritize to infinity
+        if 'no_prioritize' in kwargs:
+            do_prioritize = False
+            del kwargs['no_prioritize']
         else:
-            lines = [ production_line, ]
+            do_prioritize = True
 
-        for line in lines:
-            for i, obj in enumerate(cls.objects.scheduled(
-                    ).filter(production_line=line
-                    ).filter(priority__gt=0
-                    ).order_by('priority')):
-                obj.priority = (i + 1) * 10
-                super(Job, obj).save()
+        super(Job, self).save(*args, **kwargs) # Call the "real" save()
 
+        if do_prioritize and self.is_scheduled():
+            self.production_line.prioritize()
 
     def is_scheduled(self):
         # this is slow, but simple

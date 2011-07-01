@@ -40,6 +40,45 @@ class ProductionLineTest(TestCase):
         self.assertNotIn(job_not_scheduled, line1.scheduled_jobs())
         self.assertNotIn(job_not_scheduled, line2.scheduled_jobs())
 
+    def test_prioritize(self):
+        line = ProductionLine.objects.create(name='Line',
+                category=LINE_CATEGORY_CHOICES[0][0])
+        for i in range(3):
+            Job.objects.create(pk=i, product=self.product, qty=1,
+                    customer=self.customer, production_line=line)
+
+        self.assertEqual(Job.objects.get(pk=0).priority, 0)
+        self.assertEqual(Job.objects.get(pk=1).priority, 0)
+        self.assertEqual(Job.objects.get(pk=2).priority, 0)
+
+        j = Job.objects.get(pk=0)
+        j.priority = 33
+        j.save()
+        self.assertEqual(Job.objects.get(pk=0).priority, 10)
+        self.assertEqual(Job.objects.get(pk=1).priority, 0)
+        self.assertEqual(Job.objects.get(pk=2).priority, 0)
+
+        j = Job.objects.get(pk=1)
+        j.priority = 2
+        j.save()
+        self.assertEqual(Job.objects.get(pk=0).priority, 20)
+        self.assertEqual(Job.objects.get(pk=1).priority, 10)
+        self.assertEqual(Job.objects.get(pk=2).priority, 0)
+
+        j = Job.objects.get(pk=2)
+        j.priority = 15
+        j.save()
+        self.assertEqual(Job.objects.get(pk=0).priority, 30)
+        self.assertEqual(Job.objects.get(pk=1).priority, 10)
+        self.assertEqual(Job.objects.get(pk=2).priority, 20)
+
+        j = Job.objects.get(pk=1)
+        j.priority = 0
+        j.save()
+        self.assertEqual(Job.objects.get(pk=0).priority, 20)
+        self.assertEqual(Job.objects.get(pk=1).priority, 0)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+
 
 class ProductTest(TestCase):
 
