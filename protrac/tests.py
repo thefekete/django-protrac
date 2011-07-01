@@ -214,37 +214,6 @@ class RunTest(TestCase):
         self.assertEqual(r.cycle_time(), timedelta(seconds=1.8)) # 180s / 100ea
 
 
-#########
-# Views #
-#########
-
-class AdminCustomViewTest(TestCase):
-
-    def setUp(self):
-        self.user = User.objects.create_user('user', 'a@b.com', 'password')
-        self.user.is_staff = True
-        #self.user.is_superuser = True
-        self.user.save()
-
-    def test_admin_custom_view_no_login(self):
-        # this redirects to a login view
-        response = self.client.get(reverse('admin:admin_custom_view'))
-        # make sure we got a login page
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.context['user'].is_authenticated())
-        self.assertTemplateUsed(response, 'admin/login.html')
-
-    def test_admin_custom_view_login(self):
-        self.assertTrue(self.client.login(username='user',
-                password='password'))
-        response = self.client.get(reverse('admin:admin_custom_view'))
-        self.assertEqual(response.status_code, 200)
-        # the HttpResponse in admin_custom_view doesn't give a context, so
-        # this doesn't work here
-        #self.assertTrue(response.context['user'].is_authenticated())
-        self.assertTemplateNotUsed(response, 'admin/login.html')
-
-
 class JobScheduleViewTest(TestCase):
 
     def setUp(self):
@@ -254,7 +223,7 @@ class JobScheduleViewTest(TestCase):
 
     def test_job_schedule_view_no_login(self):
         # this redirects to a login view
-        response = self.client.get(reverse('admin:job_schedule'))
+        response = self.client.get(reverse('admin:schedule'))
         # make sure we got a login page
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context['user'].is_authenticated())
@@ -263,18 +232,35 @@ class JobScheduleViewTest(TestCase):
     def test_job_schedule_view_login(self):
         self.assertTrue(self.client.login(username='user',
                 password='password'))
-        response = self.client.get(reverse('admin:job_schedule'))
+        response = self.client.get(reverse('admin:schedule'))
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['user'].is_authenticated())
         self.assertTemplateNotUsed(response, 'admin/login.html')
-        self.assertTemplateUsed(response, 'protrac/admin_schedule.html')
+        self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
 
     def test_job_schedule_view(self):
-        # TODO: Set up the test DB for the view
+        # Set up the test DB for the view
+        cust = Customer.objects.create(name='Bills Bakery')
+        prod = Product.objects.create(part_number='M1911', cycle_time=2,
+                material_wt=3)
+        for abbr, cat in LINE_CATEGORY_CHOICES:
+            # make 3 production lines for each line category
+            for x in range(3):
+                p = ProductionLine.objects.create(
+                        name='%s line %i' % (cat, x),
+                        category=abbr)
+                for y in range(5):
+                    # put 5 jobs in each lines schedule
+                    Job.objects.create(product=prod, qty=1000, customer=cust,
+                            production_line=p, priority=((1 + y) * 10))
+
         self.assertTrue(self.client.login(username='user',
                 password='password'))
-        response = self.client.get(reverse('admin:job_schedule'))
+        response = self.client.get(reverse('admin:schedule'))
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['user'].is_authenticated())
         self.assertTemplateNotUsed(response, 'admin/login.html')
-        self.assertTemplateUsed(response, 'protrac/admin_schedule.html')
+        self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
+
+        #import pdb
+        #pdb.set_trace()

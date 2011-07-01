@@ -4,7 +4,8 @@ from django.http import HttpResponse
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 
-from models import Job
+from app_settings import LINE_CATEGORY_CHOICES
+from models import ProductionLine
 
 
 def admin_custom_view(request):
@@ -15,7 +16,8 @@ def admin_custom_view(request):
     return HttpResponse(html)
 
 
-def job_schedule(request):
-    jobs = Job.objects.all()
-    return render_to_response('protrac/admin_schedule.html', locals(),
+def schedule(request):
+    objects = [ (cat, ProductionLine.objects.filter(category=abbr))
+            for (abbr, cat) in LINE_CATEGORY_CHOICES ]
+    return render_to_response('admin/protrac/schedule.html', locals(),
             context_instance=RequestContext(request))

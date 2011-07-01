@@ -118,11 +118,11 @@ class JobAdmin(admin.ModelAdmin):
     remaining.allow_tags = True
 
     def get_urls(self):
-        from views import job_schedule
+        from views import schedule
         urls = super(JobAdmin, self).get_urls()
         my_urls = patterns('',
-            url(r'^job_schedule', self.admin_site.admin_view(job_schedule),
-                name='job_schedule'),
+            url(r'^schedule', self.admin_site.admin_view(schedule),
+                name='schedule'),
         )
         return my_urls + urls
 
