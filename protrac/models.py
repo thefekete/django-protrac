@@ -146,6 +146,7 @@ class Job(TimestampModel):
 
     @classmethod
     def prioritize(cls, production_line=None):
+        # TODO: Move prioritize to ProductionLine
         """
         Re-assigns priority values for jobs in given production_line or all if
         not specified. Priorities become multiples of ten for easy ordering by

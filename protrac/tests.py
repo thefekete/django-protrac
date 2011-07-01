@@ -15,9 +15,30 @@ from models import Customer, Job, Product, ProductionLine, Run
 
 class ProductionLineTest(TestCase):
 
+    def setUp(self):
+        self.customer = Customer.objects.create(name='Bills Bakery')
+        self.product = Product.objects.create(part_number='M1', cycle_time=1,
+                material_wt=1)
+
     def test_scheduled_jobs(self):
-        # TODO: Add tests for scheduled_jobs()
-        pass
+        line1 = ProductionLine.objects.create(name='Line 1',
+                category=LINE_CATEGORY_CHOICES[0][0])
+        line2 = ProductionLine.objects.create(name='Line 2',
+                category=LINE_CATEGORY_CHOICES[0][0])
+
+        job_line1 = Job.objects.create(product=self.product, qty=1,
+                customer=self.customer, production_line=line1)
+        job_line2 = Job.objects.create(product=self.product, qty=1,
+                customer=self.customer, production_line=line2)
+        job_not_scheduled = Job.objects.create(product=self.product, qty=1,
+                customer=self.customer)
+
+        self.assertIn(job_line1, line1.scheduled_jobs())
+        self.assertNotIn(job_line1, line2.scheduled_jobs())
+        self.assertIn(job_line2, line2.scheduled_jobs())
+        self.assertNotIn(job_line1, line2.scheduled_jobs())
+        self.assertNotIn(job_not_scheduled, line1.scheduled_jobs())
+        self.assertNotIn(job_not_scheduled, line2.scheduled_jobs())
 
 
 class ProductTest(TestCase):
@@ -71,94 +92,122 @@ class ProductTest(TestCase):
 
 
 class JobTest(TestCase):
-    # FIXME: Loose stupid test_methods() and test them individually
 
     def setUp(self):
-        self.c = Customer.objects.create(name='cust1')
-        self.pl = ProductionLine.objects.create(name='line 1', category='X')
-        self.p = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
+        self.customer = Customer.objects.create(name='cust1')
+        self.line = ProductionLine.objects.create(name='line 1',
+                category=LINE_CATEGORY_CHOICES[0][0])
+        self.product = Product.objects.create(part_number='M1911',
+                cycle_time=1, material_wt=1)
 
-    def test_qty_done(self):
-        pass
+    def test_qtys(self):
+        """
+        Tests qty_done() and qty_remaining()
 
-    def test_qty_remaining(self):
-        pass
+        """
+        j = Job.objects.create(product=self.product, qty=1000,
+                customer=self.customer)
+        self.assertEqual(j.qty_done(), 0)
+        self.assertEqual(j.qty_remaining(), 1000)
 
-    def test_weight(self):
-        pass
+        Run.objects.create(job=j, qty=397, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.qty_done(), 397)
+        self.assertEqual(j.qty_remaining(), 603)
 
-    def test_weight_remaining(self):
-        pass
+        Run.objects.create(job=j, qty=603, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.qty_done(), 1000)
+        self.assertEqual(j.qty_remaining(), 0)
 
-    def test_duration(self):
-        pass
+        Run.objects.create(job=j, qty=256, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.qty_done(), 1256)
+        self.assertEqual(j.qty_remaining(), -256)
 
-    def test_duration_remianing(self):
-        pass
+    def test_weights(self):
+        """
+        Tests weight() and weight_remaining()
 
-    def test_methods(self):
-        methods = ('qty_done', 'qty_remaining', 'weight', 'weight_remaining',
-                'duration', 'duration_remaining')
+        """
+        p = Product.objects.create(part_number='M855', cycle_time=1,
+                material_wt=2.5)
+        j = Job.objects.create(product=p, qty=1000, customer=self.customer)
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), 2500)
 
-        def assert_methods(obj, vals):
-            for m, v in zip(methods, vals):
-                ret = getattr(obj, m)()
-                try:
-                    self.assertEqual(ret, v)
-                except AssertionError:
-                    raise AssertionError('%s[%s].%s() returned %s expected %s'
-                            % (obj.__class__.__name__, obj.pk, m, ret, v))
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), 1250)
 
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), 0)
 
-        assert_methods(j, (0, 1000, 3000, 3000, timedelta(seconds=2000),
-            timedelta(seconds=2000)))
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 2500)
+        self.assertEqual(j.weight_remaining(), -1250)
 
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=250)
-        assert_methods(j, (250, 750, 3000, 2250, timedelta(seconds=2000),
-            timedelta(seconds=1500)))
+    def test_weights_zero(self):
+        """
+        Tests weight() and weight_remaining() with product weight of zero
 
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=750)
-        assert_methods(j, (1000, 0, 3000, 0, timedelta(seconds=2000),
-            timedelta(seconds=0)))
-
-        # Test product with zero weight
-        self.p0 = Product.objects.create(part_number='M16', cycle_time=2,
+        """
+        p = Product.objects.create(part_number='Weightless', cycle_time=1,
                 material_wt=0)
-        j0 = Job.objects.create(product=self.p0, qty=1000, customer=self.c)
-        assert_methods(j0, (0, 1000, 0, 0, timedelta(seconds=2000),
-            timedelta(seconds=2000)))
+        j = Job.objects.create(product=p, qty=1000, customer=self.customer)
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
 
-    def test_is_scheduled(self):
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c, pk=0)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
 
-        j.production_line = self.pl
-        j.save()
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
 
-        j.void = True
-        j.save()
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
-        j.void = False
-        j.save()
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.weight(), 0)
+        self.assertEqual(j.weight_remaining(), 0)
 
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=999)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), True)
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=1)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
-        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
-                operator='Johnny', qty=1)
-        self.assertEqual(Job.objects.get(pk=0).is_scheduled(), False)
+    def test_durations(self):
+        """
+        Tests duration() and duration_remaining()
+
+        """
+        p = Product.objects.create(part_number='Weightless', cycle_time=2.5,
+                material_wt=1)
+        j = Job.objects.create(product=p, qty=1000, customer=self.customer)
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=2500))
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=1250))
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=0))
+
+        Run.objects.create(job=j, qty=500, start=datetime.now(),
+                end=datetime.now())
+        self.assertEqual(j.duration(), timedelta(seconds=2500))
+        self.assertEqual(j.duration_remaining(), timedelta(seconds=-1250))
 
     def test_avg_cycle_time(self):
-        j = Job.objects.create(product=self.p, qty=1000, customer=self.c)
+        p = Product.objects.create(part_number='M9',
+                cycle_time=2, material_wt=3)
+        j = Job.objects.create(product=p, qty=1000,
+                customer=self.customer)
         Run.objects.create(job=j, operator='Bob', qty=60,
                 start=datetime(2000, 1, 1, 0, 0, 0),
                 end=datetime(2000, 1, 1, 0, 3, 0))
@@ -170,36 +219,42 @@ class JobTest(TestCase):
                 end=datetime(2000, 1, 1, 0, 6, 0))
         self.assertEqual(j.avg_cycle_time(), timedelta(seconds=2))
 
-    def test_prioritize(self):
-        # FIXME: Update test_prioritize for new functionality (per prod line)
-        def update_priority(pkey, priority):
-            o = Job.objects.get(pk=pkey)
-            o.priority = priority
-            o.save()
+    def test_scheduled_manager_and_is_scheduled(self):
+        """
+        Tests scheduled() queryset and is_scheduled() model method
 
-        def assert_priority(plist):
-            for pk, priority in enumerate(plist):
-                self.assertEqual(Job.objects.get(pk=pk).priority, priority)
+        """
+        j = Job.objects.create(product=self.product, qty=1000,
+                customer=self.customer, pk=0)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
 
-        # Create Jobs and assert that priorities start at 0
-        for pk in range(5):
-            Job.objects.create(production_line=self.pl, product=self.p, qty=1000,
-                    customer=self.c, pk=pk)
-            self.assertEqual(Job.objects.get(pk=pk).priority, 0)
+        j.production_line = self.line
+        j.save()
+        self.assertIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), True)
 
-        update_priority(2, 8)
-        update_priority(3, 15)
-        assert_priority((0, 0, 10, 20, 0))
+        j.void = True
+        j.save()
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
+        j.void = False
+        j.save()
+        self.assertIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), True)
 
-        update_priority(4, 15)
-        assert_priority((0, 0, 10, 30, 20))
-
-        update_priority(2, 32)
-        assert_priority((0, 0, 30, 20, 10))
-
-    def test_scheduled_manager_method(self):
-        # TODO: Add tests for scheduled() in model manager
-        pass
+        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
+                operator='Johnny', qty=999)
+        self.assertIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), True)
+        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
+                operator='Johnny', qty=1)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
+        Run.objects.create(job=j, start=datetime.now(), end=datetime.now(),
+                operator='Johnny', qty=1)
+        self.assertNotIn(j, Job.objects.scheduled())
+        self.assertEqual(j.is_scheduled(), False)
 
 
 class RunTest(TestCase):
