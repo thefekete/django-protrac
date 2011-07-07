@@ -14,7 +14,7 @@ admin.site.register(Customer, CustomerAdmin)
 
 class ProductionLineAdmin(admin.ModelAdmin):
     display_links = ['name']
-    list_filter = ['category']
+    list_filter = ['department']
 
 admin.site.register(ProductionLine, ProductionLineAdmin)
 
@@ -122,7 +122,7 @@ class JobAdmin(admin.ModelAdmin):
         my_urls = patterns('',
             url(r'^schedule/$',
                 self.admin_site.admin_view(schedule), name='schedule'),
-            url(r'^schedule/(?P<line_id>\d+)/$',
+            url(r'^schedule/(?P<department>\w+)/$',
                 self.admin_site.admin_view(schedule), name='schedule'),
         )
         return my_urls + urls

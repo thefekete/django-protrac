@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from app_settings import LINE_CATEGORY_CHOICES
+from app_settings import DEPARTMENT_CHOICES
 from models import Customer, Job, Product, ProductionLine, Run
 
 
@@ -22,9 +22,9 @@ class ProductionLineTest(TestCase):
 
     def test_scheduled_jobs(self):
         line1 = ProductionLine.objects.create(name='Line 1',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         line2 = ProductionLine.objects.create(name='Line 2',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
 
         job_line1 = Job.objects.create(product=self.product, qty=1,
                 customer=self.customer, production_line=line1)
@@ -42,7 +42,7 @@ class ProductionLineTest(TestCase):
 
     def test_prioritize(self):
         line = ProductionLine.objects.create(name='Line',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         for i in range(3):
             Job.objects.create(pk=i, product=self.product, qty=1,
                     customer=self.customer, production_line=line)
@@ -135,7 +135,7 @@ class JobTest(TestCase):
     def setUp(self):
         self.customer = Customer.objects.create(name='cust1')
         self.line = ProductionLine.objects.create(name='line 1',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         self.product = Product.objects.create(part_number='M1911',
                 cycle_time=1, material_wt=1)
 
@@ -337,9 +337,9 @@ class ScheduleViewTest(TestCase):
         self.product = Product.objects.create(part_number='M107', cycle_time=1,
                 material_wt=1)
         self.line1 = ProductionLine.objects.create(name='Line 1',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         self.line2 = ProductionLine.objects.create(name='Line 2',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         for i in range(5):
             Job.objects.create(production_line=self.line1,
                     product=self.product, qty=1000, customer=self.customer,

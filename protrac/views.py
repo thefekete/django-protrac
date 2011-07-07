@@ -1,14 +1,14 @@
 from django.shortcuts import render_to_response, redirect
 from django.template import RequestContext
 
-from protrac.app_settings import LINE_CATEGORY_CHOICES
+from protrac.app_settings import DEPARTMENT_CHOICES
 from protrac.models import ProductionLine
 
 
 def schedule(request, line_id=None):
     """
     Shows all scheduled jobs grouped by production_line and line
-    category. This view also provides the ability to change priority of jobs
+    department. This view also provides the ability to change priority of jobs
     and record Runs as well.
 
     """

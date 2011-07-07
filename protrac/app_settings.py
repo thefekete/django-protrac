@@ -12,7 +12,7 @@ The general template for this module is as follows:
 from django.conf import settings
 
 
-LINE_CATEGORY_CHOICES = getattr(settings, 'PROTRAC_LINE_CATEGORY_CHOICES',
+DEPARTMENT_CHOICES = getattr(settings, 'PROTRAC_DEPARTMENT_CHOICES',
         [
             ('A', u'Assembly'),
             ('X', u'Extrusion'),

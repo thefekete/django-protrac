@@ -1,5 +1,5 @@
-{% for category, lines in objects %}
-    <h2>{{ category }}</h2>
+{% for department, lines in objects %}
+    <h2>{{ department }}</h2>
     {% for line in lines %}
         <h2>{{ line.name }}</h2>
         {% for job in line.scheduled_jobs %}
