@@ -1,9 +1,36 @@
-{% for department, lines in objects %}
-    <h2>{{ department }}</h2>
-    {% for line in lines %}
-        <h2>{{ line.name }}</h2>
-        {% for job in line.scheduled_jobs %}
-            <p>{{ job.id }}</p>
+{% if department %}
+    <h1>{{ department.1 }} Jobs</h1>
+{% else %}
+    <h1>Showing all Production Lines</h1>
+{% endif %}
+
+{% for line in production_lines %}
+    <h2>{{ line }}</h2>
+    <form method="post" action="">
+        {{ formset.management_form }}
+        <table>
+        {% for form in line.formset %}
+        {% with form.instance as job %}
+            <tr>
+                <td>
+                {% for field in form.visible_fields %}
+                    {{ field }}
+                {% endfor %}
+                {% for hidden in form.hidden_fields %}
+                    {{ hidden }}
+                {% endfor %}
+                </td>
+                <td>{{ job }}</td>
+                <td>{{ job.product }}</td>
+                <td>{{ job.customer }}</td>
+                <td>{{ job.refs }}</td>
+                <td>{{ job.qty_remaining }} cycles</td>
+                <td>{{ job.weight_remaining }} lbs.</td>
+                <td>{{ job.duration_remaining }}</td>
+            <tr/>
+        {% endwith %}
         {% endfor %}
-    {% endfor %}
+        </table>
+        <input type="submit"> <!-- FIXME -->
+    </form>
 {% endfor %}
