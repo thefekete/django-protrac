@@ -367,20 +367,24 @@ class ScheduleViewTest(TestCase):
         self.assertTemplateNotUsed(response, 'admin/login.html')
         self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
 
-    def test_schedule_view_redirect(self):
+    def test_schedule_view_index(self):
         self.assertTrue(self.client.login(username='user',
                 password='password'))
         response = self.client.get(reverse('admin:schedule'))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
+        self.assertListEqual(response.context['departments'],
+                DEPARTMENT_CHOICES)
+        self.assertIsNone(response.context['department'])
+        self.assertIsNotNone(response.context['production_lines'])
 
-    def test_schedule_view(self):
+    def test_schedule_view_department(self):
         self.assertTrue(self.client.login(username='user',
                 password='password'))
         response = self.client.get(reverse('admin:schedule',
-                kwargs={'line_id': 1}))
+                kwargs={'department': DEPARTMENT_CHOICES[0][0]}))
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context['user'].is_authenticated())
-        self.assertTemplateNotUsed(response, 'admin/login.html')
-        self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
-
-        # TODO: Test view context and possibly content
+        self.assertListEqual(response.context['departments'],
+                DEPARTMENT_CHOICES)
+        self.assertIsNotNone(response.context['department'])
+        self.assertIn(self.line1, response.context['production_lines'])
+        self.assertIn(self.line2, response.context['production_lines'])
