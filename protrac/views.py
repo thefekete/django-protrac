@@ -23,7 +23,9 @@ def schedule(request, department=None):
 
     """
     departments = DEPARTMENT_CHOICES
-    production_lines = ProductionLine.objects.order_by('name')
+    production_lines = ProductionLine.objects.filter(
+        pk__in=[ p.id for p in ProductionLine.objects.order_by('name')
+        if p.scheduled_jobs() ]) # only fetch lines with scheduled jobs
 
     if request.method == 'POST':
         formset = PriorityFormSet(request.POST)
