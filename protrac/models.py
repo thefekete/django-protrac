@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.db import models
 
-from app_settings import LINE_CATEGORY_CHOICES
+from app_settings import DEPARTMENT_CHOICES
 
 
 ###################
@@ -46,8 +46,8 @@ class ProductionLine(models.Model):
 
     """
     name = models.CharField(max_length=64, unique=True)
-    category = models.CharField(max_length=1,
-        choices=LINE_CATEGORY_CHOICES, blank=True, null=True,
+    department = models.CharField(max_length=1,
+        choices=DEPARTMENT_CHOICES, blank=True, null=True,
         help_text='you can edit these choices in settings.py')
 
     class Meta:

@@ -2,10 +2,11 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from app_settings import LINE_CATEGORY_CHOICES
+from app_settings import DEPARTMENT_CHOICES
 from models import Customer, Job, Product, ProductionLine, Run
 
 
@@ -22,9 +23,9 @@ class ProductionLineTest(TestCase):
 
     def test_scheduled_jobs(self):
         line1 = ProductionLine.objects.create(name='Line 1',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         line2 = ProductionLine.objects.create(name='Line 2',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
 
         job_line1 = Job.objects.create(product=self.product, qty=1,
                 customer=self.customer, production_line=line1)
@@ -42,7 +43,7 @@ class ProductionLineTest(TestCase):
 
     def test_prioritize(self):
         line = ProductionLine.objects.create(name='Line',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         for i in range(3):
             Job.objects.create(pk=i, product=self.product, qty=1,
                     customer=self.customer, production_line=line)
@@ -135,7 +136,7 @@ class JobTest(TestCase):
     def setUp(self):
         self.customer = Customer.objects.create(name='cust1')
         self.line = ProductionLine.objects.create(name='line 1',
-                category=LINE_CATEGORY_CHOICES[0][0])
+                department=DEPARTMENT_CHOICES[0][0])
         self.product = Product.objects.create(part_number='M1911',
                 cycle_time=1, material_wt=1)
 
@@ -326,53 +327,175 @@ class RunTest(TestCase):
 # Views #
 #########
 
-class JobScheduleViewTest(TestCase):
+class ScheduleViewTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user('user', 'a@b.com', 'password')
         self.user.is_staff = True
         self.user.save()
 
-    def test_job_schedule_view_no_login(self):
+        self.customer = Customer.objects.create(name='USMC')
+        self.product = Product.objects.create(part_number='M107', cycle_time=1,
+                material_wt=1)
+        self.line1 = ProductionLine.objects.create(name='Line 1',
+                department=DEPARTMENT_CHOICES[0][0])
+        self.line2 = ProductionLine.objects.create(name='Line 2',
+                department=DEPARTMENT_CHOICES[0][0])
+        for i in range(5):
+            Job.objects.create(production_line=self.line1,
+                    product=self.product, qty=1000, customer=self.customer,
+                    priority=((i +1) * 10))
+            Job.objects.create(production_line=self.line2,
+                    product=self.product, qty=1000, customer=self.customer,
+                    priority=((i +1) * 10))
+
+    def test_schedule_view_no_login(self):
         # this redirects to a login view
         response = self.client.get(reverse('admin:schedule'))
-        # make sure we got a login page
+        # make sure we got a login page since we didn't login
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context['user'].is_authenticated())
         self.assertTemplateUsed(response, 'admin/login.html')
 
-    def test_job_schedule_view_login(self):
+    def test_schedule_view_login(self):
+        # login
         self.assertTrue(self.client.login(username='user',
                 password='password'))
-        response = self.client.get(reverse('admin:schedule'))
+        response = self.client.get(reverse('admin:schedule'), follow=True)
+        self.assertTrue('redirect_chain' in dir(response))
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['user'].is_authenticated())
         self.assertTemplateNotUsed(response, 'admin/login.html')
         self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
 
-    def test_job_schedule_view(self):
-        # Set up the test DB for the view
-        cust = Customer.objects.create(name='Bills Bakery')
-        prod = Product.objects.create(part_number='M1911', cycle_time=2,
-                material_wt=3)
-
-        for abbr, cat in LINE_CATEGORY_CHOICES:
-            # make 3 production lines for each line category
-            for x in range(3):
-                p = ProductionLine.objects.create(
-                        name='%s line %i' % (cat, x),
-                        category=abbr)
-                for y in range(5):
-                    # put 5 jobs in each lines schedule
-                    Job.objects.create(product=prod, qty=1000, customer=cust,
-                            production_line=p, priority=((1 + y) * 10))
-
+    def test_schedule_view_index(self):
         self.assertTrue(self.client.login(username='user',
                 password='password'))
         response = self.client.get(reverse('admin:schedule'))
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context['user'].is_authenticated())
-        self.assertTemplateNotUsed(response, 'admin/login.html')
-        self.assertTemplateUsed(response, 'admin/protrac/schedule.html')
+        self.assertListEqual(response.context['departments'],
+                DEPARTMENT_CHOICES)
+        self.assertIsNone(response.context['department'])
+        self.assertIsNotNone(response.context['production_lines'])
 
-        # TODO: Test view context and possibly content
+    def test_schedule_view_department(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+        response = self.client.get(reverse('admin:schedule',
+                kwargs={'department': DEPARTMENT_CHOICES[0][0]}))
+        self.assertEqual(response.status_code, 200)
+        self.assertListEqual(response.context['departments'],
+                DEPARTMENT_CHOICES)
+        self.assertIsNotNone(response.context['department'])
+        self.assertIn(self.line1, response.context['production_lines'])
+        self.assertIn(self.line2, response.context['production_lines'])
+
+    def test_schedule_view_submit(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+
+        # normal case
+        response = self.client.post(
+                reverse('admin:schedule'),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '20',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': '15',
+                })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+        self.assertEqual(Job.objects.get(pk=4).priority, 30)
+        self.assertEqual(Job.objects.get(pk=6).priority, 40)
+        self.assertEqual(Job.objects.get(pk=8).priority, 50)
+        self.assertEqual(Job.objects.get(pk=10).priority, 20)
+
+        # requires atomic commit of all jobs before prioritization
+        response = self.client.post(
+                reverse('admin:schedule'),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '35',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': '50',
+                })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+        self.assertEqual(Job.objects.get(pk=4).priority, 30)
+        self.assertEqual(Job.objects.get(pk=6).priority, 20)
+        self.assertEqual(Job.objects.get(pk=8).priority, 40)
+        self.assertEqual(Job.objects.get(pk=10).priority, 50)
+
+    def test_schedule_view_department_submit(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+
+        # normal case
+        response = self.client.post(
+                reverse('admin:schedule',
+                    kwargs={'department': DEPARTMENT_CHOICES[0][0]}),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '20',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': '15',
+                })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+        self.assertEqual(Job.objects.get(pk=4).priority, 30)
+        self.assertEqual(Job.objects.get(pk=6).priority, 40)
+        self.assertEqual(Job.objects.get(pk=8).priority, 50)
+        self.assertEqual(Job.objects.get(pk=10).priority, 20)
+        for m in response.context['messages']:
+            self.assertGreater(messages.WARNING, m.level)
+
+    def test_schedule_view_submit_error(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+
+        # normal case
+        response = self.client.post(
+                reverse('admin:schedule'),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '20',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': 'asdf', # this is not a number
+                })
+
+        self.assertEqual(response.status_code, 200)
+        for m in response.context['messages']:
+            self.assertLess(messages.SUCCESS, m.level)
