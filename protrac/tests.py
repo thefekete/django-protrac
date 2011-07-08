@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
@@ -388,3 +389,113 @@ class ScheduleViewTest(TestCase):
         self.assertIsNotNone(response.context['department'])
         self.assertIn(self.line1, response.context['production_lines'])
         self.assertIn(self.line2, response.context['production_lines'])
+
+    def test_schedule_view_submit(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+
+        # normal case
+        response = self.client.post(
+                reverse('admin:schedule'),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '20',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': '15',
+                })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+        self.assertEqual(Job.objects.get(pk=4).priority, 30)
+        self.assertEqual(Job.objects.get(pk=6).priority, 40)
+        self.assertEqual(Job.objects.get(pk=8).priority, 50)
+        self.assertEqual(Job.objects.get(pk=10).priority, 20)
+
+        # requires atomic commit of all jobs before prioritization
+        response = self.client.post(
+                reverse('admin:schedule'),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '35',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': '50',
+                })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+        self.assertEqual(Job.objects.get(pk=4).priority, 30)
+        self.assertEqual(Job.objects.get(pk=6).priority, 20)
+        self.assertEqual(Job.objects.get(pk=8).priority, 40)
+        self.assertEqual(Job.objects.get(pk=10).priority, 50)
+
+    def test_schedule_view_department_submit(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+
+        # normal case
+        response = self.client.post(
+                reverse('admin:schedule',
+                    kwargs={'department': DEPARTMENT_CHOICES[0][0]}),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '20',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': '15',
+                })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Job.objects.get(pk=2).priority, 10)
+        self.assertEqual(Job.objects.get(pk=4).priority, 30)
+        self.assertEqual(Job.objects.get(pk=6).priority, 40)
+        self.assertEqual(Job.objects.get(pk=8).priority, 50)
+        self.assertEqual(Job.objects.get(pk=10).priority, 20)
+        for m in response.context['messages']:
+            self.assertGreater(messages.WARNING, m.level)
+
+    def test_schedule_view_submit_error(self):
+        self.assertTrue(self.client.login(username='user',
+                password='password'))
+
+        # normal case
+        response = self.client.post(
+                reverse('admin:schedule'),
+                {
+                    'form-TOTAL_FORMS': '5',
+                    'form-INITIAL_FORMS': '5',
+                    'form-0-id': '2',
+                    'form-0-priority': '10',
+                    'form-1-id': '4',
+                    'form-1-priority': '20',
+                    'form-2-id': '6',
+                    'form-2-priority': '30',
+                    'form-3-id': '8',
+                    'form-3-priority': '40',
+                    'form-4-id': '10',
+                    'form-4-priority': 'asdf', # this is not a number
+                })
+
+        self.assertEqual(response.status_code, 200)
+        for m in response.context['messages']:
+            self.assertLess(messages.SUCCESS, m.level)
