@@ -7,7 +7,7 @@
 {% for line in production_lines %}
     <h2>{{ line }}</h2>
     <form method="post" action="">
-        {{ formset.management_form }}
+        {{ line.formset.management_form }}
         <table>
         {% for form in line.formset %}
         {% with form.instance as job %}
